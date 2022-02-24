@@ -71,8 +71,8 @@ export class DictionarylistComponent implements OnInit {
   // 定义返回的参数
   res: STRes = {
     reName: {
-      total: 'result.total',
-      list: 'result.rows',
+      total: 'data.total',
+      list: 'data.rows',
     },
   };
 
@@ -147,7 +147,7 @@ export class DictionarylistComponent implements OnInit {
   ngOnInit() {
     this.http.post('api/dictionarygroup/index', { limit: 20, offset: 0, pi: 0, ps: 20 }).subscribe(
       (x) => {
-        this.optionList = x.result.rows;
+        this.optionList = x.data.rows;
       },
       (y) => {},
       () => {},

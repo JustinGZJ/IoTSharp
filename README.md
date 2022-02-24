@@ -32,10 +32,12 @@ IoTSharp is an open-source IoT platform for data collection, processing, visuali
 ## Demo 
   http://139.9.232.10:2927
 
+## doc
+  https://docs.iotsharp.net/
 
 ## How to install IoTSharp using docker ?
 
-  -  docker pull iotsharp/iotsharp
+  -  docker pull maikebing/iotsharp
 
 
 ## How to install  using Linux daemon ?
@@ -47,9 +49,6 @@ IoTSharp is an open-source IoT platform for data collection, processing, visuali
  -	sudo systemctl enable  /etc/systemd/system/iotsharp.service 
  -	sudo systemctl start  iotsharp.service 
  -	sudo journalctl -fu  iotsharp.service 
-
-## IoTSharp's Clients 
- - Cicada    A desktop application   
 
 
 

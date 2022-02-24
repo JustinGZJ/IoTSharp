@@ -20,23 +20,44 @@ export class CustomerlistComponent implements OnInit {
   constructor(
     private http: _HttpClient,
     public msg: NzMessageService,
-    private modal: ModalHelper,
-    private cdr: ChangeDetectorRef,
     private _router: Router,
     private router: ActivatedRoute,
     private drawerService: NzDrawerService,
     private settingService: SettingsService,
-    aclSrv: ACLService,
+ 
   ) {
+
+
+
+  
+  }
+
+
+  ngOnInit(): void {
+
+    console.log(   )
+      
     this.router.queryParams.subscribe(
       (x) => {
-        this.q.tenantId = x.id as unknown as string;
-        this.tenantId = x.id as unknown as string;
+
+        if( !x.id){
+
+          this.q.tenantId= this.settingService.user.tenant
+          this.tenantId = this.settingService.user.tenant;
+        }else{
+          this.q.tenantId = x.id as unknown as string;
+          this.tenantId = x.id as unknown as string;
+        
+
+        }
         this.url = 'api/Customers/Tenant/' + this.tenantId;
+
+
       },
-      (y) => {},
+      () => {},
       () => {},
     );
+
   }
   tenantId: string = '';
   page: STPage = {
@@ -64,13 +85,13 @@ export class CustomerlistComponent implements OnInit {
   loading = false;
 
   url = 'api/Customers/Tenant/' + this.tenantId;
-  req: STReq = { method: 'GET', allInBody: true, reName: { pi: 'offset', ps: 'limit' }, params: this.q };
+  req: STReq = { method: 'Post', allInBody: true, reName: { pi: 'offset', ps: 'limit' }, params: this.q };
 
   // 定义返回的参数
   res: STRes = {
     reName: {
-      total: 'total',
-      list: 'rows',
+      total: 'data.total',
+      list: 'data.rows',
     },
   };
 
@@ -115,6 +136,12 @@ export class CustomerlistComponent implements OnInit {
         },
         {
           //  acl: 10,
+
+          pop: {
+            title: '确认删除客户?',
+            okType: 'danger',
+            icon: 'delete',
+          },
           text: '删除',
           click: (item: any) => {
             this.delete(item.id);
@@ -127,7 +154,7 @@ export class CustomerlistComponent implements OnInit {
   description = '';
   totalCallNo = 0;
   expandForm = false;
-  ngOnInit(): void {}
+
   edit(id: string): void {
     var { nzMaskClosable, width } = this.settingService.getData('drawerconfig');
     let title = id == '-1' ? '新建客户' : '修改客户';
@@ -155,7 +182,7 @@ export class CustomerlistComponent implements OnInit {
 
     drawerRef.afterOpen.subscribe(() => {});
 
-    drawerRef.afterClose.subscribe((data: any) => {
+    drawerRef.afterClose.subscribe(() => {
       this.getData();
     });
   }
@@ -167,11 +194,11 @@ export class CustomerlistComponent implements OnInit {
   reset() {}
 
   delete(id: string) {
-    this.http.delete('/api/Customers/' + id, {}).subscribe(
-      (x) => {
+    this.http.delete('api/Customers/' + id, {}).subscribe(
+      () => {
         this.getData();
       },
-      (y) => {},
+      () => {},
       () => {},
     );
   }

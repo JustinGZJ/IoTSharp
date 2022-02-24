@@ -36,24 +36,19 @@ export class UserformComponent implements OnInit {
   form!: FormGroup;
   submitting = false;
   ngOnInit() {
-    const { nullbigintid } = MyValidators;
+   
+    const { nullbigintid ,zip,email,mobile} = MyValidators;
+  
     this.form = this.fb.group({
-      name: [null, [Validators.required]],
-      id: [Guid.create().toString(), []],
-      eMail: [null, []],
-      phone: [null, []],
-      country: [null, []],
-      province: [null, []],
-      city: [null, []],
-      street: [null, []],
-      address: [null, []],
-      zipCode: [null, []],
+      email: [null, [Validators.required,email]],
+      id: [Guid.EMPTY, []],
+      phoneNumber: ['', [mobile]],
     });
 
     if (this.id !== '-1') {
-      this._httpClient.get('api/Tenants/' + this.id).subscribe(
+      this._httpClient.get('api/Account/Get?Id=' + this.id).subscribe(
         (x) => {
-          this.form.patchValue(x);
+          this.form.patchValue(x.data);
         },
         (y) => {},
         () => {},
@@ -64,22 +59,21 @@ export class UserformComponent implements OnInit {
   submit() {
     this.submitting = true;
 
-    if (this.id !== '-1') {
-      this._httpClient.put('api/Tenants/' + this.form.value.id, this.form.value).subscribe(
+    if (this.id !== Guid.EMPTY) {
+      this._httpClient.put('api/Account/Modify' , this.form.value).subscribe(
         (x) => {
           this.submitting = false;
+          this.msg.create('success', '用户信息保存成功');
+          this.close();
         },
         (y) => {},
         () => {},
       );
-    } else {
-      this._httpClient.post('api/Tenants', this.form.value).subscribe(
-        (x) => {
-          this.submitting = false;
-        },
-        (y) => {},
-        () => {},
-      );
+   
+    }else{
+
+
+      
     }
   }
   close(): void {

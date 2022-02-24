@@ -34,6 +34,10 @@ import { NzPageHeaderModule } from 'ng-zorro-antd/page-header';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { NzCodeEditorModule } from 'ng-zorro-antd/code-editor';
+import { NzTreeViewModule } from 'ng-zorro-antd/tree-view';
+import { NzResizableModule } from 'ng-zorro-antd/resizable';
+import { NzCollapseModule } from 'ng-zorro-antd/collapse';
+import { NzAutocompleteModule } from 'ng-zorro-antd/auto-complete';
 export const SHARED_ZORRO_MODULES = [
   NzButtonModule,
   NzMessageModule,
@@ -71,4 +75,6 @@ export const SHARED_ZORRO_MODULES = [
   NzLayoutModule,
   NzStepsModule,
   NzCodeEditorModule,
+  NzTreeViewModule,
+  NzResizableModule,NzCollapseModule,NzAutocompleteModule
 ];

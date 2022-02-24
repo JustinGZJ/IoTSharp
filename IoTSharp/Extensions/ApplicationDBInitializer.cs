@@ -430,8 +430,9 @@ namespace IoTSharp.Data
 
         public async Task SeedDictionary()
         {
-            var controltype = this._context.BaseDictionaryGroups.Add(new BaseDictionaryGroup { DictionaryGroupName = "控件类型", });
-            var datatype = this._context.BaseDictionaryGroups.Add(new BaseDictionaryGroup { DictionaryGroupName = "数据类型", });
+            var controltype = this._context.BaseDictionaryGroups.Add(new BaseDictionaryGroup { DictionaryGroupName = "控件类型",  DictionaryGroupStatus = 1});
+            this._context.SaveChanges();
+            var datatype = this._context.BaseDictionaryGroups.Add(new BaseDictionaryGroup { DictionaryGroupName = "数据类型", DictionaryGroupStatus = 1 });
             this._context.SaveChanges();
 
             this._context.BaseDictionaries.Add(new BaseDictionary { DictionaryName = "bool", DictionaryTag = typeof(bool).FullName, DictionaryValue = "13", Dictionary18NKeyName = "dic.types.bool", DictionaryStatus = 1, DictionaryGroupId = datatype.Entity.DictionaryGroupId, DictionaryDesc = "", DictionaryIcon = "" });
@@ -507,10 +508,10 @@ namespace IoTSharp.Data
                     await _signInManager.UserManager.AddClaimAsync(user, new Claim(ClaimTypes.Email, model.Email));
                     await _signInManager.UserManager.AddClaimAsync(user, new Claim(IoTSharpClaimTypes.Customer, customer.Id.ToString()));
                     await _signInManager.UserManager.AddClaimAsync(user, new Claim(IoTSharpClaimTypes.Tenant, tenant.Id.ToString()));
-                    //await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.Anonymous));
-                    //await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.NormalUser));
-                    //await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.CustomerAdmin));
-                    //await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.TenantAdmin));
+                    await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.Anonymous));
+                    await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.NormalUser));
+                    await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.CustomerAdmin));
+                    await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.TenantAdmin));
                     await _signInManager.UserManager.AddToRoleAsync(user, nameof(UserRole.SystemAdmin));
 
                 }

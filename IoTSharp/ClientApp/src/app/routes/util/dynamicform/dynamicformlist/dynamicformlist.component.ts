@@ -1,13 +1,16 @@
-import { ChangeDetectorRef, Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { STPage, STReq, STRes, STComponent, STColumn, STData } from '@delon/abc/st';
-import { _HttpClient, ModalHelper, SettingsService } from '@delon/theme';
+import { _HttpClient, SettingsService } from '@delon/theme';
 import { NzDrawerService } from 'ng-zorro-antd/drawer';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { ConditionbuilderComponent } from '../conditionbuilder/conditionbuilder.component';
+import { DynamicformdesignerComponent } from '../dynamicformdesigner/dynamicformdesigner.component';
+import { Dynamicformdesignerv2Component } from '../dynamicformdesignerv2/dynamicformdesignerv2.component';
 
 import { DynamicformeditorComponent } from '../dynamicformeditor/dynamicformeditor.component';
 import { DynamicformfieldeditorComponent } from '../dynamicformfieldeditor/dynamicformfieldeditor.component';
 import { DynamicformtesterComponent } from '../dynamicformtester/dynamicformtester.component';
+import { SearchformgeneratorComponent } from '../searchformgenerator/searchformgenerator.component';
 
 @Component({
   selector: 'app-dynamicformlist',
@@ -18,9 +21,6 @@ export class DynamicformlistComponent implements OnInit {
   constructor(
     private http: _HttpClient,
     public msg: NzMessageService,
-    private modal: ModalHelper,
-    private cdr: ChangeDetectorRef,
-    private _router: Router,
     private drawerService: NzDrawerService,
     private settingService: SettingsService,
   ) {}
@@ -71,8 +71,8 @@ export class DynamicformlistComponent implements OnInit {
   // 定义返回的参数
   res: STRes = {
     reName: {
-      total: 'result.total',
-      list: 'result.rows',
+      total: 'data.total',
+      list: 'data.rows',
     },
   };
 
@@ -108,16 +108,16 @@ export class DynamicformlistComponent implements OnInit {
         {
           text: '字段编辑',
           acl: 103,
-          i18n: 'dynamicform.fieldedit',
+        //  i18n: 'dynamicform.fieldedit',
           click: (item: any) => {
             this.openFieldComponent(item.formId);
           },
         },
-
+    
         {
           text: '预览',
           acl: 103,
-          i18n: 'dynamicform.formpriview',
+       //   i18n: 'dynamicform.formpriview',
           click: (item: any) => {
             this.openFormComponent(item.formId);
           },
@@ -132,10 +132,10 @@ export class DynamicformlistComponent implements OnInit {
           },
           click: (item: any) => {
             this.http.get('api/dynamicforminfo/setstatus?id=' + item.formId).subscribe(
-              (x) => {
+              () => {
                 this.getData();
               },
-              (y) => {},
+              () => {},
               () => {},
             );
           },
@@ -150,12 +150,52 @@ export class DynamicformlistComponent implements OnInit {
           },
           click: (item: any) => {
             this.http.get('api/dynamicforminfo/delete?id=' + item.formId).subscribe(
-              (x) => {
+              () => {
                 this.getData();
               },
-              (y) => {},
+              () => {},
               () => {},
             );
+          },
+
+
+
+        }, {
+          text: '设计',
+          acl: 103,
+          //    i18n: 'dynamicform.fieldedit',
+          click: (item: any) => {
+            this.openDesignerComponent(item.formId);
+          },
+        },
+
+
+        {
+          text: '设计2',
+          acl: 103,
+          //    i18n: 'dynamicform.fieldedit',
+          click: (item: any) => {
+            this.openDesignerComponentV2(item.formId);
+          },
+        },
+
+
+        {
+          text: 'SearchForm',
+          acl: 103,
+          //    i18n: 'dynamicform.fieldedit',
+          click: (item: any) => {
+            this.openSearchFormComponent(item.formId);
+          },
+        },
+
+
+        {
+          text: 'ConditionBuilder',
+          acl: 103,
+          //    i18n: 'dynamicform.fieldedit',
+          click: (item: any) => {
+            this.openConditionBuilderComponent(item.formId);
           },
         },
       ],
@@ -215,6 +255,57 @@ export class DynamicformlistComponent implements OnInit {
     });
   }
 
+
+  openDesignerComponent(id: Number): void {
+    var title = id == -1 ? '设计' : '设计';
+    var { nzMaskClosable } = this.settingService.getData('drawerconfig');
+    const drawerRef = this.drawerService.create<DynamicformdesignerComponent, { id: Number }, string>({
+      nzTitle: title,
+      nzContent: DynamicformdesignerComponent,
+       nzWidth: 1024,
+       nzMaskClosable: nzMaskClosable,
+
+      nzContentParams: {
+        id: id,
+      },
+    });
+
+    drawerRef.afterOpen.subscribe(() => {});
+
+    drawerRef.afterClose.subscribe((data) => {
+      if (typeof data === 'string') {
+      }
+
+      this.getData();
+    });
+  }
+
+
+
+
+  openDesignerComponentV2(id: Number): void {
+    var title = id == -1 ? '设计' : '设计';
+    var { nzMaskClosable } = this.settingService.getData('drawerconfig');
+    const drawerRef = this.drawerService.create<Dynamicformdesignerv2Component, { id: Number }, string>({
+      nzTitle: title,
+      nzContent: Dynamicformdesignerv2Component,
+      nzWidth: 1024,
+      nzMaskClosable: nzMaskClosable,
+
+      nzContentParams: {
+        id: id,
+      },
+    });
+
+    drawerRef.afterOpen.subscribe(() => { });
+
+    drawerRef.afterClose.subscribe((data) => {
+      if (typeof data === 'string') {
+      }
+
+      this.getData();
+    });
+  }
   openFormComponent(id: Number): void {
     var title = '预览';
     var { nzMaskClosable, width } = this.settingService.getData('drawerconfig');
@@ -239,15 +330,65 @@ export class DynamicformlistComponent implements OnInit {
     });
   }
 
+
+  openSearchFormComponent(id: Number): void {
+    var title = '预览';
+    var { nzMaskClosable, width } = this.settingService.getData('drawerconfig');
+    const drawerRef = this.drawerService.create<SearchformgeneratorComponent, { id: Number }, string>({
+      nzTitle: title,
+      nzContent: SearchformgeneratorComponent,
+      nzWidth: 1024,
+      nzMaskClosable: nzMaskClosable,
+
+      nzContentParams: {
+        id: id,
+      },
+    });
+
+    drawerRef.afterOpen.subscribe(() => {});
+
+    drawerRef.afterClose.subscribe((data) => {
+      if (typeof data === 'string') {
+      }
+
+      this.getData();
+    });
+  }
+
+
+  openConditionBuilderComponent(id: Number): void {
+    var title = '预览';
+    var { nzMaskClosable, width } = this.settingService.getData('drawerconfig');
+    const drawerRef = this.drawerService.create<ConditionbuilderComponent, { id: Number }, string>({
+      nzTitle: title,
+      nzContent: ConditionbuilderComponent,
+      nzWidth: 1024,
+      nzMaskClosable: nzMaskClosable,
+
+      nzContentParams: {
+        id: id,
+      },
+    });
+
+    drawerRef.afterOpen.subscribe(() => {});
+
+    drawerRef.afterClose.subscribe((data) => {
+      if (typeof data === 'string') {
+      }
+
+      this.getData();
+    });
+  }
+
   getData() {
     this.st.req = this.req;
     this.st.load(this.st.pi);
   }
 
-  add(tpl: TemplateRef<{}>) {}
+  add() {}
 
   reset() {
     setTimeout(() => {}, 1000);
   }
-  setstatus(number: number, status: number) {}
+  setstatus() {}
 }

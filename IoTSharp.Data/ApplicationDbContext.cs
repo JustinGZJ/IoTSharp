@@ -16,7 +16,7 @@ namespace IoTSharp.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
-            if (Database.GetPendingMigrations().Count() > 0)
+            if (Database.IsRelational()  && Database.GetPendingMigrations().Any())
             {
                 Database.Migrate();
             }
@@ -26,7 +26,7 @@ namespace IoTSharp.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-         
+            modelBuilder.Entity<Device>().HasOne(c => c.DeviceIdentity).WithOne(c => c.Device).HasForeignKey<DeviceIdentity>(c => c.DeviceId);
             modelBuilder.Entity<DataStorage>().HasKey(c => new { c.Catalog, c.DeviceId, c.KeyName });
             modelBuilder.Entity<DataStorage>().HasIndex(c => c.Catalog);
             modelBuilder.Entity<DataStorage>().HasIndex(c => new { c.Catalog, c.DeviceId });
@@ -40,6 +40,7 @@ namespace IoTSharp.Data
             modelBuilder.Entity<TelemetryLatest>().HasDiscriminator<DataCatalog>(nameof(Data.DataStorage.Catalog));
             modelBuilder.Entity<Device>().HasDiscriminator<DeviceType>(nameof(Data.Device.DeviceType)).HasValue<Gateway>(DeviceType.Gateway).HasValue<Device>(DeviceType.Device);
             modelBuilder.Entity<Gateway>().HasDiscriminator<DeviceType>(nameof(Data.Device.DeviceType));
+       
             var builder_options= this.GetService<IDataBaseModelBuilderOptions>();
             builder_options.Infrastructure = this;
             builder_options.OnModelCreating(modelBuilder);
@@ -61,19 +62,40 @@ namespace IoTSharp.Data
         public DbSet<TelemetryLatest> TelemetryLatest { get; set; }
         public DbSet<DeviceIdentity> DeviceIdentities { get; set; }
         public DbSet<AuditLog> AuditLog { get; set; }
-        public DbSet<FlowRule> FlowRules { get; set; }
-        public DbSet<Flow> Flows { get; set; }
-        public DbSet<FlowOperation> FlowOperations { get; set; }
-        public DbSet<BaseI18N> BaseI18Ns { get; set; }
-        public DbSet<BaseEvent> BaseEvents { get; set; }
+     
         public DbSet<BaseDictionaryGroup> BaseDictionaryGroups { get; set; }
         public DbSet<BaseDictionary> BaseDictionaries { get; set; }
         public DbSet<DynamicFormFieldInfo> DynamicFormFieldInfos { get; set; }
         public DbSet<DynamicFormFieldValueInfo> DynamicFormFieldValueInfos { get; set; }
         public DbSet<DynamicFormInfo> DynamicFormInfos { get; set; }
-    
-
+        public DbSet<BaseI18N> BaseI18Ns { get; set; }
         public DbSet<AuthorizedKey> AuthorizedKeys { get; set; }
 
+        public DbSet<BaseEvent> BaseEvents { get; set; }
+        public DbSet<FlowRule> FlowRules { get; set; }
+        public DbSet<Flow> Flows { get; set; }
+        public DbSet<FlowOperation> FlowOperations { get; set; }
+        public DbSet<DeviceRule> DeviceRules { get; set; }
+
+        public DbSet<RuleTaskExecutor> RuleTaskExecutors { get; set; }
+
+        public DbSet<SubscriptionTask> SubscriptionTasks { get; set; }
+        public DbSet<SubscriptionEvent> SubscriptionEvents { get; set; }
+
+        public DbSet<DeviceDiagram> DeviceDiagrams { get; set; }
+
+        public DbSet<DeviceGraph> DeviceGraphs { get; set; }
+
+        public DbSet<DeviceGraphToolBox> DeviceGraphToolBoxes { get; set; }
+
+        public DbSet<DevicePort> DevicePorts { get; set; }
+        public DbSet<DevicePortMapping> DevicePortMappings { get; set; }
+
+        public DbSet<DeviceModel> DeviceModels { get; set; }
+        public DbSet<DeviceModelCommand> DeviceModelCommands { get; set; }
+
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
     }
+    
 }

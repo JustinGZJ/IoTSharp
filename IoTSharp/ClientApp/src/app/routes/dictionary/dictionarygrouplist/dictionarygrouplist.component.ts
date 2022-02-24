@@ -70,8 +70,8 @@ export class DictionarygrouplistComponent implements OnInit {
   // 定义返回的参数
   res: STRes = {
     reName: {
-      total: 'result.total',
-      list: 'result.rows',
+      total: 'data.total',
+      list: 'data.rows',
     },
   };
 
@@ -179,9 +179,13 @@ export class DictionarygrouplistComponent implements OnInit {
     console.log(event);
     switch (event.type) {
       case 'expand':
-        this.http.get<AppMessage>('api/common/dictionaryservice/getdictionary?id=' + event.expand.DictionaryGroupId).subscribe(
+        this.http.post<AppMessage>('api/dictionary/index' ,{
+          DictionaryGroupId:event.expand.dictionaryGroupId,
+          offset:0,
+          limit:100
+        }).subscribe(
           (x) => {
-            event.expand.Children = x.result;
+            event.expand.Children = x.data.rows;
           },
           (y) => {},
           () => {},

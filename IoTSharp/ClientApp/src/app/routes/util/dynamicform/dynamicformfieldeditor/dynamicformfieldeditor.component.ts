@@ -45,22 +45,22 @@ export class DynamicformfieldeditorComponent implements OnInit {
     concat(
       this.http.post('api/dictionary/index', { DictionaryGroupId: 2, pi: 0, ps: 20, limit: 20, offset: 0 }).pipe(
         map((x) => {
-          this.AllSuportType = x.result.rows.map((x) => {
+          this.AllSuportType = x.data.rows.map((x) => {
             return { label: x.dictionaryName, value: x.dictionaryValue };
           });
         }),
       ),
       this.http.post('api/dictionary/index', { DictionaryGroupId: 1, pi: 0, ps: 20, limit: 20, offset: 0 }).pipe(
         map((x) => {
-          this.AllControlType = x.result.rows.map((x) => {
+          this.AllControlType = x.data.rows.map((x) => {
             return { label: x.dictionaryName, value: x.dictionaryValue };
           });
         }),
       ),
       this.http.get('api/dynamicforminfo/getParams?id=' + this.id).pipe(
         map((x) => {
-          if (x.result.propdata) {
-            x.result.propdata = x.result.propdata.map((x) => {
+          if (x.data.propdata) {
+            x.data.propdata = x.data.propdata.map((x) => {
               return {
                 FieldId: x.fieldId,
                 FieldName: x.fieldName,
@@ -70,35 +70,38 @@ export class DynamicformfieldeditorComponent implements OnInit {
                 FieldUIElementSchema: x.fieldUIElementSchema,
                 FieldUIElement: x.fieldUIElement,
                 FieldCode: x.fieldCode,
+                FieldUnit: x.fieldUnit,
                 IsRequired: x.isRequired,
               };
             });
 
-            for (var i = 0; i < x.result.propdata.length; i++) {
+            for (var i = 0; i < x.data.propdata.length; i++) {
               //始终从头插入
               const componentRef = this.viewContainerRef.createComponent<FieldpartComponent>(this.componentFactory, 0);
               let key = this.makeString();
               componentRef.instance.AllSuportType = this.AllSuportType;
               componentRef.instance.AllControlType = this.AllControlType;
-              let e = new FormField(
+              let field = new FormField(
                 key,
-                x.result.propdata[i].FieldId,
-                x.result.propdata[i].FieldName,
-                x.result.propdata[i].FieldValue,
-                x.result.propdata[i].FieldValueType,
-                x.result.propdata[i].FieldValueDataSource,
-                x.result.propdata[i].FieldUIElementSchema,
-                x.result.propdata[i].FieldUIElement + '',
-                x.result.propdata[i].FieldUnit,
+                x.data.propdata[i].FieldId,
+                x.data.propdata[i].FieldName,
+                x.data.propdata[i].FieldValue,
+                x.data.propdata[i].FieldValueType,
+                x.data.propdata[i].FieldValueDataSource,
+                x.data.propdata[i].FieldUIElementSchema,
+                x.data.propdata[i].FieldUIElement + '',
+                x.data.propdata[i].FieldUnit,
                 {
-                  properties: this.createschema(x.result.propdata[i].FieldUIElement, x.result.propdata[i].FieldUIElementSchema),
+                  properties: this.createschema(x.data.propdata[i].FieldUIElement, x.data.propdata[i].FieldUIElementSchema),
                 },
                 {},
                 //  () => {},
-                x.result.propdata[i].FieldCode,
-                x.result.propdata[i].IsRequired,
+                x.data.propdata[i].FieldCode,
+                x.data.propdata[i].IsRequired,
               );
-              componentRef.instance.FormField = e;
+
+            
+              componentRef.instance.FormField = field;
               componentRef.instance.OnRemove.subscribe((x) => {
                 var index = this.FieldDatas.findIndex((c) => c.Key == x.Key);
                 if (index > -1) {
@@ -107,7 +110,7 @@ export class DynamicformfieldeditorComponent implements OnInit {
                   this.cd.detectChanges();
                 }
               });
-              this.FieldDatas = [new FieldData(e, componentRef, key), ...this.FieldDatas];
+              this.FieldDatas = [new FieldData(field, componentRef, key), ...this.FieldDatas];
             }
           }
 
@@ -165,6 +168,14 @@ export class DynamicformfieldeditorComponent implements OnInit {
       if (!item.prop.FieldCode) {
         item.prop.FieldCodenzValidatingTip = '索引不能为空';
         item.prop.FieldCodenzValidateStatus = 'error';
+        item.componentRef.location.nativeElement.scrollIntoView();
+        return;
+      }
+
+
+      if (item.prop.FieldValueType==='0') {
+        item.prop.FieldValueTypenzValidatingTip = '数据类型不能为空';
+        item.prop.FieldValueTypenzValidateStatus = 'error';
         item.componentRef.location.nativeElement.scrollIntoView();
         return;
       }
@@ -801,6 +812,12 @@ export class DynamicformfieldeditorComponent implements OnInit {
           },
         };
         break;
+
+
+        case 20:
+          return {}; 
+         
+
     }
   }
 
@@ -905,12 +922,15 @@ export class DynamicformfieldeditorComponent implements OnInit {
       case '19':
         this.SuportType = this.AllSuportType.filter((c) => c.value === '1' || c.value === '2' || c.value === '3' || c.value === '9');
         break;
+        case '20':
+          this.SuportType = this.AllSuportType.filter((c) => c.value === '4'); 
+               break;
     }
 
     //  this.AllSuportType.filter(c=>c.value===)
     // this.http.get('api/common/dictionaryservice/gettargettype?id=' + type + '&format=' + format).subscribe(
     //   (x) => {
-    //     this.AllSuportType = x.Result;
+    //     this.AllSuportType = x.data;
     //   },
     //   (y) => {},
     //   () => {},

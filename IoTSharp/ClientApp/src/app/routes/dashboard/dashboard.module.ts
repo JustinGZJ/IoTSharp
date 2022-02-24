@@ -25,8 +25,14 @@ import { DashboardMonitorComponent } from './monitor/monitor.component';
 import { DashboardV1Component } from './v1/v1.component';
 import { DashboardWorkplaceComponent } from './workplace/workplace.component';
 
+import { HeaderkanbanComponent } from './wedgits/headerkanban/headerkanban.component';
+import { WarningboardComponent } from './wedgits/warningboard/warningboard.component';
+import { NewdeviceComponent } from './wedgits/newdevice/newdevice.component';
+import { StatisticsComponent } from './wedgits/statistics/statistics.component';
+import { AbmModule } from 'angular-baidu-maps';
+import { widgetdirective } from './wedgits/widgetdirective';
 const COMPONENTS = [DashboardV1Component, DashboardAnalysisComponent, DashboardMonitorComponent, DashboardWorkplaceComponent];
-
+var Directives = [widgetdirective];
 @NgModule({
   imports: [
     SharedModule,
@@ -49,7 +55,10 @@ const COMPONENTS = [DashboardV1Component, DashboardAnalysisComponent, DashboardM
     TrendModule,
     QuickMenuModule,
     OnboardingModule,
+    AbmModule.forRoot({
+      apiKey: 'Xgk3DdnaP9KNZdiKROD5Ad14BQGb3kYS' // app key为必选项
+    })
   ],
-  declarations: [...COMPONENTS],
+  declarations: [...COMPONENTS, HeaderkanbanComponent, WarningboardComponent, NewdeviceComponent, StatisticsComponent, Directives]
 })
 export class DashboardModule {}

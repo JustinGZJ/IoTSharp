@@ -20,12 +20,9 @@ export class DictionaryformComponent implements OnInit {
   title: string = '';
 
   constructor(
-    private _router: ActivatedRoute,
-    private router: Router,
-    private _formBuilder: FormBuilder,
     private _httpClient: _HttpClient,
-    private fb: FormBuilder,
     private msg: NzMessageService,
+    private fb: FormBuilder,
     private drawerRef: NzDrawerRef<string>,
   ) {}
   form!: FormGroup;
@@ -53,7 +50,7 @@ export class DictionaryformComponent implements OnInit {
     if (this.id !== -1) {
       this._httpClient.get<AppMessage>('api/dictionary/get?id=' + this.id).subscribe(
         (x) => {
-          this.form.patchValue(x.result);
+          this.form.patchValue(x.data);
         },
         (y) => {},
         () => {},

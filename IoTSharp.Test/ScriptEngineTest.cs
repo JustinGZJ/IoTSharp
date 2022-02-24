@@ -1,8 +1,12 @@
 ﻿using IoTSharp.Interpreter;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,6 +20,8 @@ namespace IoTSharp.Test
         private PythonScriptEngine _python_engine;
         private LuaScriptEngine _lua_engine;
         private CScriptEngine _c_engine;
+        private SQLEngine _sql_engine;
+        private CSharpScriptEngine _csharp_engine;
 
         [TestInitialize]
         public void InitTestScriptEngine()
@@ -25,11 +31,13 @@ namespace IoTSharp.Test
                   f.AddConsole();
               });
            
-            _js_engine = new JavaScriptEngine(lgf.CreateLogger<JavaScriptEngine>(), new Interpreter.EngineSetting() { Timeout = 4 }, System.Threading.Tasks.Task.Factory.CancellationToken);
-            _python_engine = new PythonScriptEngine(lgf.CreateLogger<PythonScriptEngine>(), new Interpreter.EngineSetting() { Timeout = 4 }, System.Threading.Tasks.Task.Factory.CancellationToken);
-            _lua_engine = new  LuaScriptEngine (lgf.CreateLogger<LuaScriptEngine>(), new Interpreter.EngineSetting() { Timeout = 4 }, System.Threading.Tasks.Task.Factory.CancellationToken);
-            _c_engine = new CScriptEngine(lgf.CreateLogger<CScriptEngine>(), new Interpreter.EngineSetting() { Timeout = 4 }, System.Threading.Tasks.Task.Factory.CancellationToken);
-            
+          
+             _js_engine = new JavaScriptEngine(lgf.CreateLogger<JavaScriptEngine>(), Options.Create( new Interpreter.EngineSetting() { Timeout = 4 }));
+            _python_engine = new PythonScriptEngine(lgf.CreateLogger<PythonScriptEngine>(), Options.Create(new Interpreter.EngineSetting() { Timeout = 4 }));
+            _lua_engine = new  LuaScriptEngine (lgf.CreateLogger<LuaScriptEngine>(), Options.Create(new Interpreter.EngineSetting() { Timeout = 4 }));
+            _c_engine = new CScriptEngine(lgf.CreateLogger<CScriptEngine>(), Options.Create(new Interpreter.EngineSetting() { Timeout = 4 }));
+            _sql_engine=new SQLEngine(lgf.CreateLogger<SQLEngine>(), Options.Create(new Interpreter.EngineSetting() { Timeout = 4 }));
+            _csharp_engine = new  CSharpScriptEngine   (lgf.CreateLogger<CSharpScriptEngine>(), Options.Create(new Interpreter.EngineSetting() { Timeout = 4 }));
         }
         [TestMethod]
         public void TestJavaScript()
@@ -104,6 +112,34 @@ return    fff:new()
             string output = _c_engine.Do("atoi(input)>38?1:0;", input);
             
             Assert.AreEqual(int.Parse(input) > 38 ? 1 : 0, output);
+        }
+        [TestMethod]
+        public void TestSQL()
+        {
+            var sql = "select sex from input where (username=\"李红\")";
+            var input = "[{\"username\":\"张三\",\"sex\":\"男\",\"birthday\":{\"year\":2000,\"month\":6,\"day\":18}},{\"username\":\"李红\",\"sex\":\"女\",\"birthday\":{\"year\":1986,\"month\":9,\"day\":22}}]";
+            string output = _sql_engine.Do(sql,input );
+            dynamic obj = JsonConvert.DeserializeObject<List<ExpandoObject>>(output);
+            Assert.AreEqual(obj[0].sex, "女");
+        }
+
+        [TestMethod]
+        public void TestCSharpScript()
+        {
+            var intput = System.Text.Json.JsonSerializer.Serialize(new { temperature = 39, height = 192, weight = 121 });
+
+            string output = _csharp_engine.Do(@"
+var _m = (input.height / 100);
+var output = new {
+    fever= input.temperature > 38 ? true : false,
+    fat= input.weight / (_m * _m)>28?true:false
+};
+return output;
+", intput);
+
+            var t = new { fever = true, fat = true };
+            var outpuobj = System.Text.Json.JsonSerializer.Deserialize(output, t.GetType());
+            Assert.AreEqual(outpuobj, t);
         }
     }
 }

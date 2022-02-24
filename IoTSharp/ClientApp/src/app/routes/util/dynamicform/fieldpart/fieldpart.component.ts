@@ -39,7 +39,7 @@ export class FieldpartComponent implements OnInit {
   setDisabledState?(isDisabled: boolean): void {}
 
   ngOnInit(): void {
-    console.log(this.FormField);
+
     switch (this.FormField.FieldUIElement) {
       case '1':
         this.DSVisble = false;
@@ -828,4 +828,8 @@ export class FormField {
 
   FieldCodenzValidateStatus: string;
   FieldCodenzValidatingTip: string;
+
+
+  FieldValueTypenzValidateStatus: string;
+  FieldValueTypenzValidatingTip: string;
 }

@@ -30,10 +30,12 @@ IoTSharp 是一个 基于.Net Core 开源的物联网基础平台， 支持 HTTP
 ## 演示：
   http://139.9.232.10:2927
 
+## 文档：
+  https://docs.iotsharp.net/
 
 ## 如何使用 docker 安装IoTSharp?
 
-  -  docker pull iotsharp/iotsharp
+  -  docker pull maikebing/iotsharp
 
 
 ## 如何使用Linux 安装?
@@ -46,9 +48,7 @@ IoTSharp 是一个 基于.Net Core 开源的物联网基础平台， 支持 HTTP
  -	sudo systemctl start  iotsharp.service 
  -	sudo journalctl -fu  iotsharp.service 
 
-## IoTSharp的客户端
- - Cicada     一个桌面程序
- -    [IoTSharp.ClientApp](IoTSharp.ClientApp)  Blazor编写的客户端
+
 
 ##  IoTSharp.SDKs
 

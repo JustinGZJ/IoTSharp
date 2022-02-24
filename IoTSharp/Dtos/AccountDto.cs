@@ -17,6 +17,10 @@ namespace IoTSharp.Dtos
         /// 过期时间
         /// </summary>
         public long expires_in { get; set; }
+
+
+        public string refresh_token { get; set; }
+        public DateTime expires { get; set; }
     }
 
     public class LoginResult
@@ -45,6 +49,7 @@ namespace IoTSharp.Dtos
         /// 用户所具备权限
         /// </summary>
         public IList<string> Roles { get; set; }
+        public string Avatar { get; internal set; }
     }
 
     public class LoginDto
@@ -94,4 +99,13 @@ namespace IoTSharp.Dtos
         public int AccessFailedCount { get;  set; }
         public string Id { get;  set; }
     }
+
+    public class UserPassword
+    {
+        public string Pass { get; set; }
+        public string PassNew { get; set; }
+        public string PassNewSecond { get; set; }
+    }
+
+
 }

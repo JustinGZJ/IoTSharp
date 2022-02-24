@@ -47,6 +47,15 @@
       },
       "applicationUrl": ";http://localhost:5000"
     },
+    "Production": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      },
+      "applicationUrl": ";http://localhost:5000"
+    },
+
     "TimescaleDB": {
       "commandName": "Project",
       "launchBrowser": true,
@@ -60,6 +69,14 @@
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Sqlite"
+      },
+      "applicationUrl": ";http://localhost:5000"
+    },
+    "InMemory": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "InMemory"
       },
       "applicationUrl": ";http://localhost:5000"
     },

@@ -23,16 +23,10 @@ export class ProAccountSettingsComponent implements AfterViewInit, OnDestroy {
     },
     {
       key: 'security',
-      title: '安全设置',
+      title: '密码修改',
     },
-    {
-      key: 'binding',
-      title: '账号绑定',
-    },
-    {
-      key: 'notification',
-      title: '新消息通知',
-    },
+  
+  
   ];
   constructor(private router: Router, private cdr: ChangeDetectorRef, private el: ElementRef<HTMLElement>) {
     this.router$ = this.router.events.pipe(filter((e) => e instanceof ActivationEnd)).subscribe(() => this.setActive());

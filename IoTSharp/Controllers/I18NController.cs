@@ -1,5 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using EasyCaching.Core;
+using IoTSharp.Controllers.Models;
+using IoTSharp.Data;
+using IoTSharp.Dtos;
+using IoTSharp.Models;
+using LinqKit;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,27 +17,18 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
-using EasyCaching.Core;
-using IoTSharp.Controllers.Models;
-using IoTSharp.Data;
-using IoTSharp.Models;
-using LinqKit;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using RestSharp.Extensions;
 
 namespace IoTSharp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class I18NController : ControllerBase
     {
         private readonly ApplicationDBInitializer _dBInitializer;
         private readonly IEasyCachingProvider _cachingprovider;
         private readonly IOptions<BaiduTranslateProfile> _profile;
         private ApplicationDbContext _context;
-
 
         public I18NController(ApplicationDbContext context, IEasyCachingProvider provider, IOptions<BaiduTranslateProfile> profile, ApplicationDBInitializer dBInitializer)
         {
@@ -41,112 +40,101 @@ namespace IoTSharp.Controllers
 
         [HttpGet("[action]")]
         [AllowAnonymous]
-        public async Task<AppMessage> Current(string lang)
+        public async Task<ApiResult<Dictionary<string, string>>> Current(string lang)
         {
-            
-             lang =  lang?.ToLower();
-
+            lang = lang?.ToLower();
             var _cachedi18n = await _cachingprovider.GetAsync<BaseI18N[]>("i18n");
-
-
             var i18n = _cachedi18n?.Value;
             if (i18n == null)
             {
                 i18n = _context.BaseI18Ns.ToArray();
                 if (i18n.Length == 0)
                 {
-                  await  _dBInitializer.SeedI18N();
-                  i18n = _context.BaseI18Ns.ToArray();
+                    await _dBInitializer.SeedI18N();
+                    i18n = _context.BaseI18Ns.ToArray();
                 }
-                _cachingprovider.Set<BaseI18N[]>("i18n", i18n,TimeSpan.FromMinutes(5));
+                _cachingprovider.Set<BaseI18N[]>("i18n", i18n, TimeSpan.FromMinutes(5));
             }
             switch (lang)
             {
-
                 case "el-gr":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueENGR }).ToDictionary(x => x.KeyName, y => y.ValueENGR) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueENGR }).ToDictionary(x => x.KeyName, y => y.ValueENGR));
+
                 case "en-us":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueENUS }).ToDictionary(x => x.KeyName, y => y.ValueENUS) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueENUS }).ToDictionary(x => x.KeyName, y => y.ValueENUS));
+
                 case "fr-fr":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueFRFR }).ToDictionary(x => x.KeyName, y => y.ValueFRFR) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueFRFR }).ToDictionary(x => x.KeyName, y => y.ValueFRFR));
+
                 case "hr-hr":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueHRHR }).ToDictionary(x => x.KeyName, y => y.ValueHRHR) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueHRHR }).ToDictionary(x => x.KeyName, y => y.ValueHRHR));
+
                 case "ko-kr":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueKOKR }).ToDictionary(x => x.KeyName, y => y.ValueKOKR) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueKOKR }).ToDictionary(x => x.KeyName, y => y.ValueKOKR));
+
                 case "pl-pl":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValuePLPL }).ToDictionary(x => x.KeyName, y => y.ValuePLPL) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValuePLPL }).ToDictionary(x => x.KeyName, y => y.ValuePLPL));
+
                 case "sl-sl":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueSLSL }).ToDictionary(x => x.KeyName, y => y.ValueSLSL) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueSLSL }).ToDictionary(x => x.KeyName, y => y.ValueSLSL));
+
                 case "tr-tr":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueTRTR }).ToDictionary(x => x.KeyName, y => y.ValueTRTR) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueTRTR }).ToDictionary(x => x.KeyName, y => y.ValueTRTR));
+
                 case "zh-tw":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueZHTW }).ToDictionary(x => x.KeyName, y => y.ValueZHTW) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueZHTW }).ToDictionary(x => x.KeyName, y => y.ValueZHTW));
+
                 case "zh-cn":
-                    return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueZHCN }).ToDictionary(x => x.KeyName, y => y.ValueZHCN) };
+                    return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueZHCN }).ToDictionary(x => x.KeyName, y => y.ValueZHCN));
             }
-            return new AppMessage { Result = i18n.Select(c => new { c.KeyName, c.ValueZHCN }).ToDictionary(x => x.KeyName, y => y.ValueZHCN) };
+
+            return new ApiResult<Dictionary<string, string>>(ApiCode.Success, "OK", i18n.Select(c => new { c.KeyName, c.ValueZHCN }).ToDictionary(x => x.KeyName, y => y.ValueZHCN));
         }
 
-
-
         [HttpPost("[action]")]
-        public AppMessage Index([FromBody] I18NParam m)
+        public ApiResult<PagedData<BaseI18N>> Index([FromBody] I18NParam m)
         {
-
             Expression<Func<BaseI18N, bool>> condition = x => x.Status > -1;
             if (!string.IsNullOrEmpty(m.KeyName))
             {
                 condition = condition.And(x => x.KeyName.Contains(m.KeyName));
             }
-            var rows = _context.BaseI18Ns.OrderByDescending(c => c.Id).Where(condition).Skip((m.offset) * m.limit).Take(m.limit).ToList();
-            var total = _context.BaseI18Ns.Count(condition);
-            return new AppMessage
+            return new ApiResult<PagedData<BaseI18N>>(ApiCode.Success, "OK", new PagedData<BaseI18N>
             {
-                ErrType = ErrType.正常返回,
-                Result = new
-                {
-                    rows,
-                    total
-                }
-
-            };
-        }
-        [HttpGet("[action]")]
-        public AppMessage Get(int id)
-        {
-            return new AppMessage
-            {
-                ErrType = ErrType.正常返回,
-                Result = _context.BaseI18Ns.SingleOrDefault(c => c.Id == id)
-
-            };
-
+                total = _context.BaseI18Ns.Count(condition),
+                rows = _context.BaseI18Ns.OrderByDescending(c => c.Id).Where(condition).Skip((m.offset) * m.limit).Take(m.limit).ToList()
+            });
         }
 
         [HttpGet("[action]")]
-        public JsonResult CheckExist(string key)
+        public ApiResult<BaseI18N> Get(int id)
         {
-            if (string.IsNullOrEmpty(key))
+            var i18N = _context.BaseI18Ns.SingleOrDefault(c => c.Id == id);
+            if (i18N != null)
             {
-                return new JsonResult(new AppMessage
-                {
-                    ErrType = ErrType.正常返回,
-                    Result = false
-                });
+                return new ApiResult<BaseI18N>(ApiCode.Success, "OK", i18N);
             }
             else
             {
-                return new JsonResult( new AppMessage
-                {
-                    ErrType = ErrType.正常返回,
-                    Result = _context.BaseI18Ns.Any(c => c.KeyName.ToLower() == key.ToLower())
-                });
+                return new ApiResult<BaseI18N>(ApiCode.CantFindObject, "can't find this object", null);
             }
         }
-    
+
+        [HttpGet("[action]")]
+        public ApiResult<bool> CheckExist(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return new ApiResult<bool>(ApiCode.Success, "OK", false);
+            }
+            else
+            {
+                return new ApiResult<bool>(ApiCode.Success, "OK", _context.BaseI18Ns.Any(c => c.KeyName.ToLower() == key.ToLower()));
+            }
+        }
 
         [HttpPost("[action]")]
-        public AppMessage Save(BaseI18N m)
+        public ApiResult<bool> Save(BaseI18N m)
         {
             var i18n = new BaseI18N()
             {
@@ -180,23 +168,15 @@ namespace IoTSharp.Controllers
                 ValueSV = m.ValueSV,
                 ValueUK = m.ValueUK,
                 ValueVI = m.ValueVI,
-
             };
 
             _context.BaseI18Ns.Add(i18n);
             _context.SaveChanges();
-       
-
-            return new AppMessage
-            {
-                ErrType = ErrType.正常返回,
-
-            };
-
+            return new ApiResult<bool>(ApiCode.CantFindObject, "OK", true);
         }
 
         [HttpGet("[action]")]
-        public AppMessage Delete(long id)
+        public ApiResult<bool> Delete(long id)
         {
             var i18n = _context.BaseI18Ns.FirstOrDefault(c => c.Id == id);
 
@@ -205,22 +185,15 @@ namespace IoTSharp.Controllers
                 i18n.Status = -1;
                 _context.BaseI18Ns.Update(i18n);
                 _context.SaveChanges();
-                return new AppMessage
-                {
-                    ErrType = ErrType.正常返回,
 
-                };
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
             }
-            return new AppMessage
-            {
-                ErrType = ErrType.正常返回,
 
-            };
-
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find this object", false);
         }
 
         [HttpGet("[action]")]
-        public AppMessage SetStatus(int id)
+        public ApiResult<bool> SetStatus(int id)
         {
             var obj = _context.BaseI18Ns.FirstOrDefault(c => c.Id == id);
             if (obj != null)
@@ -228,32 +201,14 @@ namespace IoTSharp.Controllers
                 obj.Status = obj.Status == 1 ? 0 : 1;
                 _context.BaseI18Ns.Update(obj);
                 _context.SaveChanges();
-                return new AppMessage
-                {
-                    ErrType = ErrType.正常返回,
-                    Result = new
-                    {
-
-                    }
-
-                };
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
             }
-            return new AppMessage
-            {
-                ErrType = ErrType.找不到对象,
-                Result = new
-                {
-
-                }
-
-            };
-
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find this object", false);
         }
+
         [HttpPost("[action]")]
-        public AppMessage Update(BaseI18N m)
+        public ApiResult<bool> Update(BaseI18N m)
         {
-
-
             var i18n = _context.BaseI18Ns.FirstOrDefault(c => c.Id == m.Id);
             if (i18n != null)
             {
@@ -287,31 +242,14 @@ namespace IoTSharp.Controllers
                 _context.BaseI18Ns.Update(i18n);
                 _context.SaveChanges();
 
-                return new AppMessage
-                {
-                    ErrType = ErrType.正常返回,
-                    Result = new
-                    {
-
-                    }
-
-                };
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
             }
 
-            return new AppMessage
-            {
-                ErrType = ErrType.找不到对象,
-                Result = new
-                {
-
-                }
-
-            };
-
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find this object", false);
         }
 
         [HttpGet("[action]")]
-        public async Task<AppMessage> Translate(string Words)
+        public async Task<ApiResult<List<BaiduTranslateResult>>> Translate(string Words)
         {
             string q = Words;
             string from = _profile.Value.DefaultLang ?? "zh";
@@ -320,6 +258,7 @@ namespace IoTSharp.Controllers
             string secretKey = _profile.Value.AppSecret;
             int _wait = _profile.Value.ApiInterval ?? 80;
             List<BaiduTranslateResult> l = new List<BaiduTranslateResult>();
+            //百度限流了，不要搞太多
             foreach (var item in _profile.Value.LangFieldMapping)
             {
                 string to = item.Target;
@@ -336,19 +275,13 @@ namespace IoTSharp.Controllers
                     url += "&sign=" + sign;
                     var response = await client.GetAsync(url);
                     response.EnsureSuccessStatusCode();
-                    //使用 await 语法读取响应内容
                     string responseBody = await response.Content.ReadAsStringAsync();
                     responseBody = responseBody.TrimStart('\n');
                     l.Add(JsonConvert.DeserializeObject<BaiduTranslateResult>(responseBody));
                 }
-               
-
             }
-            return new AppMessage() { Result = l, ErrLevel = ErrLevel.Success, ErrType = ErrType.正常返回 };
-
-
+            return new ApiResult<List<BaiduTranslateResult>>(ApiCode.Success, "OK", l);
         }
-
 
         public static string EncryptString(string str)
         {

@@ -62,7 +62,7 @@ export class I18nformComponent implements OnInit {
     if (this.id !== -1) {
       this._httpClient.get<AppMessage>('api/i18n/get?id=' + this.id).subscribe(
         (x) => {
-          this.form.patchValue(x.result);
+          this.form.patchValue(x.data);
         },
         (y) => {},
         () => {},
@@ -94,7 +94,7 @@ export class I18nformComponent implements OnInit {
     return this._httpClient.get<AppMessage>('api/i18n/checkexist?key=' + control.value)
       .pipe(
         map(x =>
-          x.result ? '1111' : null
+          x.data ? '1111' : null
         )
       )
   }
@@ -116,84 +116,84 @@ export class I18nformComponent implements OnInit {
 
     this._httpClient.get<AppMessage>(Url).subscribe(
       (x) => {
-        for (var i = 0; i < x.result.length; i++) {
-          switch (x.result[i].to) {
+        for (var i = 0; i < x.data.length; i++) {
+          switch (x.data[i].to) {
             case 'en':
-              console.log(x.result[i].trans_result[0].dst);
-              this.form.patchValue({ valueENUS: x.result[i].trans_result[0].dst });
-              this.form.patchValue({ valueENGR: x.result[i].trans_result[0].dst });
+              console.log(x.data[i].trans_result[0].dst);
+              this.form.patchValue({ valueENUS: x.data[i].trans_result[0].dst });
+              this.form.patchValue({ valueENGR: x.data[i].trans_result[0].dst });
               break;
             case 'kor':
-              this.form.patchValue({ valueKOKR: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueKOKR: x.data[i].trans_result[0].dst });
               break;
             case 'spa':
-              this.form.patchValue({ valueESES: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueESES: x.data[i].trans_result[0].dst });
               break;
             case 'de':
-              this.form.patchValue({ valueDEDE: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueDEDE: x.data[i].trans_result[0].dst });
               break;
             case 'fra':
-              this.form.patchValue({ valueFRFR: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueFRFR: x.data[i].trans_result[0].dst });
               break;
             case 'jp':
-              this.form.patchValue({ valueJAJP: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueJAJP: x.data[i].trans_result[0].dst });
               break;
             case 'it':
-              this.form.patchValue({ valueITIT: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueITIT: x.data[i].trans_result[0].dst });
               break;
             case 'tr':
-              this.form.patchValue({ valueTRTR: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueTRTR: x.data[i].trans_result[0].dst });
               break;
             case 'hrv':
-              this.form.patchValue({ valueHRHR: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueHRHR: x.data[i].trans_result[0].dst });
               break;
             case 'slo':
-              this.form.patchValue({ valueSLSL: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueSLSL: x.data[i].trans_result[0].dst });
               break;
             case 'pl':
-              this.form.patchValue({ valuePLPL: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valuePLPL: x.data[i].trans_result[0].dst });
               break;
             case 'cht':
-              this.form.patchValue({ valueZHTW: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueZHTW: x.data[i].trans_result[0].dst });
               break;
             case 'el':
-              this.form.patchValue({ valueELGR: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueELGR: x.data[i].trans_result[0].dst });
               break;
             case 'bul':
-              this.form.patchValue({ valueBG: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueBG: x.data[i].trans_result[0].dst });
               break;
             case 'cs':
-              this.form.patchValue({ valueCS: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueCS: x.data[i].trans_result[0].dst });
               break;
             case 'dan':
-              this.form.patchValue({ valueDA: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueDA: x.data[i].trans_result[0].dst });
               break;
             case 'fin':
-              this.form.patchValue({ valueFI: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueFI: x.data[i].trans_result[0].dst });
               break;
             case 'heb':
-              this.form.patchValue({ valueHE: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueHE: x.data[i].trans_result[0].dst });
               break;
             case 'hu':
-              this.form.patchValue({ valueHU: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueHU: x.data[i].trans_result[0].dst });
               break;
             case 'nl':
-              this.form.patchValue({ valueNL: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueNL: x.data[i].trans_result[0].dst });
               break;
             case 'srp':
-              this.form.patchValue({ valueSR: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueSR: x.data[i].trans_result[0].dst });
               break;
             case 'swe':
-              this.form.patchValue({ valueSV: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueSV: x.data[i].trans_result[0].dst });
               break;
             case 'ukr':
-              this.form.patchValue({ valueUK: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueUK: x.data[i].trans_result[0].dst });
               break;
             case 'vie':
-              this.form.patchValue({ valueVI: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valueVI: x.data[i].trans_result[0].dst });
               break;
             case 'pt':
-              this.form.patchValue({ valuePT: x.result[i].trans_result[0].dst });
+              this.form.patchValue({ valuePT: x.data[i].trans_result[0].dst });
               break;
             default:
           }

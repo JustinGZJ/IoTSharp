@@ -1,21 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace IoTSharp.Data
 {
-   public class Flow
+    public class Flow:IJustMy
     {
         [Key]
-        [DatabaseGenerated(System.ComponentModel.DataAnnotations.Schema.DatabaseGeneratedOption.Identity)]
-        public long FlowId { get; set; }
+        public Guid FlowId { get; set; }
+
         public string bpmnid { get; set; }
         public string Flowname { get; set; }
-        public long RuleId { get; set; }
+        public FlowRule FlowRule { get; set; }
         public string Flowdesc { get; set; }
         public string ObjectId { get; set; }
         public string FlowType { get; set; }
@@ -25,10 +20,27 @@ namespace IoTSharp.Data
         public string Conditionexpression { get; set; }
         public string NodeProcessMethod { get; set; }
         public string NodeProcessParams { get; set; }
-        public string NodeProcessType{ get; set; }
+        public string NodeProcessType { get; set; }
         public string NodeProcessScriptType { get; set; }
         public string NodeProcessScript { get; set; }
         public string Incoming { get; set; }
         public string Outgoing { get; set; }
+        public int FlowStatus { get; set; }
+        public int TestStatus { get; set; }
+        public Guid Tester { get; set; }
+        public DateTime TesterDateTime { get; set; }
+        public Guid CreateId { get; set; }
+
+        public DateTime CreateDate { get; set; }
+
+        public Guid Createor { get; set; }
+
+        public RuleTaskExecutor Executor { get; set; }
+
+
+        public Tenant Tenant { get; set; }
+
+        public Customer Customer { get; set; }
+
     }
 }

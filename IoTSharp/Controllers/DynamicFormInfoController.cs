@@ -1,20 +1,21 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using IoTSharp.Controllers.Models;
+using IoTSharp.Data;
+using IoTSharp.Dtos;
+using IoTSharp.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-using System.Threading.Tasks;
-using IoTSharp.Controllers.Models;
-using IoTSharp.Data;
-using IoTSharp.Models;
-using Microsoft.AspNetCore.Identity;
 
 namespace IoTSharp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class DynamicFormInfoController : ControllerBase
     {
         private ApplicationDbContext _context;
@@ -26,78 +27,49 @@ namespace IoTSharp.Controllers
             this._context = context;
         }
 
-
-
         [HttpPost("[action]")]
-        public AppMessage Index([FromBody] IPageParam m)
+        public ApiResult<PagedData<DynamicFormInfo>> Index([FromBody] IPageParam m)
         {
-
             Expression<Func<DynamicFormInfo, bool>> condition = x => x.FormStatus > -1;
             var result = _context
                 .DynamicFormInfos.OrderByDescending(c => c.FormId).Where(condition).Skip((m.offset) * m.limit).Take(m.limit).ToList();
-            return new AppMessage
-            {
-                Result = new
-                {
-                    rows = result,
-                    total = _context.DynamicFormInfos.Count(condition)
-                }
-            };
 
+            return new ApiResult<PagedData<DynamicFormInfo>>(ApiCode.Success, "OK", new PagedData<DynamicFormInfo>
+            {
+                total = _context.DynamicFormInfos.Count(condition),
+                rows = _context.DynamicFormInfos.OrderByDescending(c => c.FormId).Where(condition).Skip((m.offset) * m.limit).Take(m.limit).ToList()
+            });
         }
 
-
-
         [HttpGet("[action]")]
-        public AppMessage Get(int id)
+        public ApiResult<DynamicFormInfo> Get(int id)
         {
-
-            var form = _context.DynamicFormInfos.FirstOrDefault(c => c.FormId == id);
-            if (form != null)
+            var dynamicFormInfo = _context.DynamicFormInfos.SingleOrDefault(c => c.FormId == id);
+            if (dynamicFormInfo != null)
             {
-                return new AppMessage
-                {
-                    Result = form
-                };
+                return new ApiResult<DynamicFormInfo>(ApiCode.Success, "OK", dynamicFormInfo);
             }
-            return new AppMessage
+            else
             {
-                ErrType = ErrType.找不到对象
-            };
-
+                return new ApiResult<DynamicFormInfo>(ApiCode.CantFindObject, "can't find this object", null);
+            }
         }
 
-
-
         [HttpGet("[action]")]
-        public AppMessage GetFields(int id)
+        public ApiResult<List<DynamicFormInfo>> GetFields(int id)
         {
-
-            var fields = _context.DynamicFormInfos.Where(c => c.FormId == id).ToList();
-            if (fields != null)
-            {
-                return new AppMessage
-                {
-                    Result = fields
-                };
-            }
-            return new AppMessage
-            {
-                ErrType = ErrType.找不到对象
-            };
-
+            var dynamicFormInfo = _context.DynamicFormInfos.Where(c => c.FormId == id).ToList();
+            return new ApiResult<List<DynamicFormInfo>>(ApiCode.Success, "OK", dynamicFormInfo);
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="m"></param>
         /// <returns></returns>
         [HttpPost("[action]")]
-        public AppMessage Save(DynamicFormInfo m)
+        public ApiResult<bool> Save(DynamicFormInfo m)
         {
-
-
             var route = new DynamicFormInfo()
             {
                 FormName = m.FormName,
@@ -110,15 +82,12 @@ namespace IoTSharp.Controllers
             _context.DynamicFormInfos.Add(route);
             _context.SaveChanges();
 
-            return new AppMessage
-            {
-                ErrType = ErrType.正常返回
-            };
+            return new ApiResult<bool>(ApiCode.Success, "OK", true);
         }
-        [HttpPost("[action]")]
-        public AppMessage Update(DynamicFormInfo m)
-        {
 
+        [HttpPost("[action]")]
+        public ApiResult<bool> Update(DynamicFormInfo m)
+        {
             var route = _context.DynamicFormInfos.FirstOrDefault(c => c.FormId == m.FormId);
             if (route != null)
             {
@@ -126,24 +95,13 @@ namespace IoTSharp.Controllers
                 route.FormDesc = m.FormDesc;
                 _context.DynamicFormInfos.Update(route);
                 _context.SaveChanges();
-                return new AppMessage
-                {
-                    ErrType = ErrType.正常返回
-                };
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
             }
-            return new AppMessage
-            {
-                ErrType = ErrType.找不到对象
-            };
-
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find this object", false);
         }
 
-
-
-
-
         [HttpGet("[action]")]
-        public AppMessage Delete(int id)
+        public ApiResult<bool> Delete(int id)
         {
             var route = _context.DynamicFormInfos.FirstOrDefault(c => c.FormId == id);
             if (route != null)
@@ -151,15 +109,13 @@ namespace IoTSharp.Controllers
                 route.FormStatus = -1;
                 _context.DynamicFormInfos.Update(route);
                 _context.SaveChanges();
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
             }
-            return new AppMessage
-            {
-                ErrType = ErrType.找不到对象
-            };
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find this object", false);
         }
 
         [HttpGet("[action]")]
-        public AppMessage SetStatus(int id)
+        public ApiResult<bool> SetStatus(int id)
         {
             var obj = _context.DynamicFormInfos.FirstOrDefault(c => c.FormId == id);
             if (obj != null)
@@ -167,35 +123,25 @@ namespace IoTSharp.Controllers
                 obj.FormStatus = obj.FormStatus == 1 ? 0 : 1;
                 _context.DynamicFormInfos.Update(obj);
                 _context.SaveChanges();
-                return new AppMessage
-                {
-                    ErrType = ErrType.正常返回
-                };
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
             }
-            return new AppMessage
-            {
-                ErrType = ErrType.找不到对象
-            };
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find this object", false);
         }
 
-
-
         [HttpPost("[action]")]
-        public AppMessage SaveParams(FormFieldData model)
+        public ApiResult<bool> SaveParams(FormFieldData model)
         {
-
             var fields = _context.DynamicFormFieldInfos.
                 Where(c => c.FormId == model.Id && c.FieldStatus > -1).ToList();
 
             if (fields != null)
             {
-                var typeinfo = _context.BaseDictionaries.Where(c => c.DictionaryGroupId == 1 && c.DictionaryStatus > 0)
+                var typeinfo = _context.BaseDictionaries.Where(c => c.DictionaryGroupId == 2 && c.DictionaryStatus > 0)
                     .ToList();
                 _context.DynamicFormFieldInfos.Where(c => c.FormId == model.Id &&
                                                           c.FieldStatus > -1).ToList()
                     .ForEach(x =>
                     {
-
                         if (model.propdata.All(c => c.FieldId != x.FieldId))
                         {
                             x.FieldStatus = -1;
@@ -205,7 +151,6 @@ namespace IoTSharp.Controllers
                     });
                 foreach (var item in model.propdata)
                 {
-
                     var field =
                         fields.FirstOrDefault(c => c.FieldId == item.FieldId);
                     if (field != null)
@@ -230,17 +175,19 @@ namespace IoTSharp.Controllers
 
                         switch (item.FieldUIElement)
                         {
-
                             case 1:
                                 field.FieldValueTypeName = "number";
                                 break;
+
                             case 5:
                                 field.FieldValueTypeName = "boolean";
                                 break;
+
                             case 16:
                                 field.FieldValueType = 14;
                                 field.FieldValueTypeName = "number";
                                 break;
+
                             case 19:
                                 field.FieldValueTypeName = "number";
                                 break;
@@ -280,9 +227,11 @@ namespace IoTSharp.Controllers
                             case 1:
                                 field.FieldValueTypeName = "number";
                                 break;
+
                             case 5:
                                 field.FieldValueTypeName = "boolean";
                                 break;
+
                             case 19:
                                 field.FieldValueTypeName = "number";
                                 break;
@@ -294,9 +243,6 @@ namespace IoTSharp.Controllers
                         _context.DynamicFormFieldInfos.Add(field);
                         _context.SaveChanges();
                     }
-
-
-                    
                 }
                 var allfields = _context.DynamicFormFieldInfos.Where(c => c.FormId == model.Id &&
                                                                           c.FieldStatus > -1).ToList();
@@ -307,7 +253,6 @@ namespace IoTSharp.Controllers
                 {
                     builder.Append("public ").Append(Type.GetType(x.FieldPocoTypeName)?.Name).Append(" ").Append(x.FieldCode)
                         .Append("{ get; set;}\n");
-
                 });
                 builder.Append("}");
                 var form = _context.DynamicFormInfos.FirstOrDefault(c => c.FormId == model.Id);
@@ -315,56 +260,42 @@ namespace IoTSharp.Controllers
                 _context.DynamicFormInfos.Update(form);
                 _context.SaveChanges();
 
-                return new AppMessage
-                {
-                    ErrType = ErrType.正常返回
-                };
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
             }
-            return new AppMessage
-            {
-                ErrType = ErrType.找不到对象
-            };
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find any fields", false);
         }
 
-
-
         [HttpGet("[action]")]
-        public AppMessage GetParams(int id)
+        public ApiResult<dynamic> GetParams(int id)
         {
             var deviceTypefields = _context.DynamicFormFieldInfos.Where(c => c.FormId == id && c.FieldStatus > -1).ToList();
-            return new AppMessage
+
+            return new ApiResult<dynamic>(ApiCode.Success, "OK", new
             {
-                ErrType = ErrType.正常返回,
-                Result = new
+                Id = id,
+                propdata = deviceTypefields.Select(c => new
                 {
-                    Id = id,
-                    propdata = deviceTypefields.Select(c => new
-                    {
-                        c.FormId,
-                        c.FieldId,
-                        c.FieldName,
-                        c.FieldValue,
-                        FieldValueType = c.FieldValueType.ToString(),
-                        c.FieldStatus,
-                        c.FieldPattern,
-                        c.FieldMaxLength,
-                        c.FieldI18nKey,
-                        c.FieldValueDataSource,
-                        c.FieldValueTypeName,
-                        c.FieldUIElement,
-                        c.FieldUIElementSchema,
-                        c.FieldUnit,
-                        c.FieldCode
-                    }).ToArray()
-
-
-                }
-            };
-
+                    c.FormId,
+                    c.FieldId,
+                    c.FieldName,
+                    c.FieldValue,
+                    FieldValueType = c.FieldValueType.ToString(),
+                    c.FieldStatus,
+                    c.FieldPattern,
+                    c.FieldMaxLength,
+                    c.FieldI18nKey,
+                    c.FieldValueDataSource,
+                    c.FieldValueTypeName,
+                    c.FieldUIElement,
+                    c.FieldUIElementSchema,
+                    c.FieldUnit,
+                    c.FieldCode
+                }).ToArray()
+            });
         }
 
         [HttpGet("[action]")]
-        public AppMessage GetFormFieldValue(int BizId, int FormId)
+        public ApiResult<List<DynamicFormFieldInfo>> GetFormFieldValue(int BizId, int FormId)
         {
             var Fields = _context.DynamicFormFieldInfos.Where(c => c.FormId == FormId && c.FieldStatus > 0)
                 .ToList();
@@ -379,32 +310,8 @@ namespace IoTSharp.Controllers
                     item.FieldValue = _item.FieldValue;
                 }
             }
-            return new AppMessage
-            {
-                ErrType = ErrType.正常返回,
-                Result = Fields
-            };
 
+            return new ApiResult<List<DynamicFormFieldInfo>>(ApiCode.Success, "OK", Fields);
         }
-
-
-        [HttpGet("[action]")]
-        public AppMessage CodeGen(FormFieldData model)
-        {
-            // a stupid code generator
-
-
-
-
-            return new AppMessage
-            {
-                ErrType = ErrType.正常返回,
-
-            };
-        }
-
     }
-
-
-
 }

@@ -1,9 +1,8 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
 import { _HttpClient } from '@delon/theme';
+import { Guid } from 'guid-typescript';
 import { NzDrawerRef } from 'ng-zorro-antd/drawer';
-import { NzMessageService } from 'ng-zorro-antd/message';
 import { AppMessage } from '../../common/AppMessage';
 
 @Component({
@@ -14,15 +13,11 @@ import { AppMessage } from '../../common/AppMessage';
 export class FlowformComponent implements OnInit {
   title: string = '';
   loading = false;
-  @Input() id: number = -1;
+  @Input() id: string ;
   form!: FormGroup;
   constructor(
-    private _router: ActivatedRoute,
-    private router: Router,
-    private _formBuilder: FormBuilder,
     private _httpClient: _HttpClient,
     private fb: FormBuilder,
-    private msg: NzMessageService,
     private drawerRef: NzDrawerRef<string>,
   ) {}
 
@@ -31,15 +26,17 @@ export class FlowformComponent implements OnInit {
     this.form = this.fb.group({
       name: [null, [Validators.required]],
       ruleDesc: [null, []],
-      ruleId: [0, []],
+      mountType: [null, [Validators.required]],
+      ruleId: [Guid.EMPTY, []],
     });
 
-    if (this.id !== -1) {
+    if (this.id !== Guid.EMPTY) {
       this._httpClient.get<AppMessage>('api/rules/get?id=' + this.id).subscribe(
         (x) => {
-          this.form.patchValue(x.result);
+          x.data.mountType= x.data.mountType+'';
+          this.form.patchValue(x.data);
         },
-        (y) => {},
+        () => {},
         () => {},
       );
     }
@@ -47,14 +44,14 @@ export class FlowformComponent implements OnInit {
 
   submit() {
     this.submitting = true;
-    var uri = this.id !== -1 ? 'api/rules/update' : 'api/rules/save';
+    var uri = this.id !== Guid.EMPTY ? 'api/rules/update' : 'api/rules/save';
     if (this.form.value.id === '') {
     }
     this._httpClient.post(uri, this.form.value).subscribe(
-      (x) => {
+      () => {
         this.submitting = false;
       },
-      (y) => {
+      () => {
         this.submitting = false;
       },
       () => { this.drawerRef.close(this.id);},

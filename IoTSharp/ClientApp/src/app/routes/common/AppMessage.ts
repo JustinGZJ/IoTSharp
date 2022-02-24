@@ -1,14 +1,18 @@
 export interface AppMessage {
-  errType?: number;
-  errMessage?: string;
-  result?: any;
-  errLevel?: string;
-  isVisble?: boolean;
+  code?: number;
+  msg?:string;
+  data?: any;
+
 }
 export class appmessage<T> {
-  errType?: number;
-  errMessage?: string;
-  result?: T;
-  errLevel?: string;
-  isVisble?: boolean;
+  code?: number;
+  msg?:string;
+  data?: T;
+
+}
+export interface pageddata<T>{
+rows:T[];
+total:number;
+
+
 }

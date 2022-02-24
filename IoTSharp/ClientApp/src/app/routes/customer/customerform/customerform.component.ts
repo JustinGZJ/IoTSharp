@@ -35,9 +35,6 @@ export class CustomerformComponent implements OnInit {
   loading = false;
   avatarUrl?: string;
   constructor(
-    private _router: ActivatedRoute,
-    private router: Router,
-    private _formBuilder: FormBuilder,
     private _httpClient: _HttpClient,
     private fb: FormBuilder,
     private msg: NzMessageService,
@@ -50,20 +47,18 @@ export class CustomerformComponent implements OnInit {
 
 
   ngOnInit() {
-    const { nullbigintid } = MyValidators;
-
-    console.log(this.params)
+    const { zip,email,mobile} = MyValidators;
     this.form = this.fb.group({
       name: [null, [Validators.required]],
-      id: [Guid.create().toString(), []],
-      email: [null, []],
-      phone: [null, []],
+      id: [Guid.EMPTY, []],
+      email: [null, [email]],
+      phone: [null, [mobile]],
       country: [null, []],
       province: [null, []],
       city: [null, []],
       street: [null, []],
       address: [null, []],
-      zipCode: [null, []],
+      zipCode: [null, [Validators.required,zip]],
       tenantID: [this.params.tenantId, []],
     });
 
@@ -71,9 +66,9 @@ export class CustomerformComponent implements OnInit {
     if (this.params.id !== '-1') {
       this._httpClient.get('api/Customers/' + this.params.id).subscribe(
         (x) => {
-          this.form.patchValue(x);
+          this.form.patchValue(x.data);
         },
-        (y) => { },
+        () => { },
         () => { },
       );
     }
@@ -82,10 +77,27 @@ export class CustomerformComponent implements OnInit {
   submit() {
     this.submitting = true;
 
-    if (this.params.id !== "-1") {
-      this._httpClient.put("api/Customers/" + this.form.value.id, this.form.value).subscribe(x => { this.submitting = false; }, y => { }, () => { this.submitting = false; });
+    if (this.params.id !==Guid.EMPTY) {
+      this._httpClient.put("api/Customers/" + this.form.value.id, this.form.value).subscribe(() => {
+        
+        this.submitting = false;
+        this.msg.create('success', '客户保存成功');
+        this.close();
+      
+      
+      }, () => {
+
+        this.submitting = false;
+        this.msg.create('error', '客户保存失败');
+
+       }, () => { this.submitting = false;
+         });
     } else {
-      this._httpClient.post("api/Customers", this.form.value).subscribe(x => { this.submitting = false; }, y => { }, () => { this.submitting = false; });
+      this._httpClient.post("api/Customers", this.form.value).subscribe(() => { this.submitting = false; }, () => { }, () => { this.submitting = false;
+      
+      
+        this.msg.create('success', '客户保存成功');
+        this.close()});
     }
 
 

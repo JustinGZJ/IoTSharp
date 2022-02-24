@@ -1,15 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.28803.156
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D5C97089-F896-436D-8E99-27B2E43BC65F}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		appveyor.yml = appveyor.yml
 		buildimage.cmd = buildimage.cmd
+		buildimageqhse.cmd = buildimageqhse.cmd
+		buildimageuixe.cmd = buildimageuixe.cmd
 		LICENSE = LICENSE
-		package.json = package.json
 		README.md = README.md
 		README.zh.md = README.zh.md
 		roadmap.md = roadmap.md
@@ -34,6 +35,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{3048484A
 		buildimage.cmd = buildimage.cmd
 		tools\ef_db_drop.cmd = tools\ef_db_drop.cmd
 		tools\ef_mg_add.cmd = tools\ef_mg_add.cmd
+		tools\ef_mg_remove.cmd = tools\ef_mg_remove.cmd
 		tools\upgrade_ef.cmd = tools\upgrade_ef.cmd
 	EndProjectSection
 EndProject
@@ -55,7 +57,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IoTSharp.Data.Oracle", "IoT
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IoTSharp.Data.Sqlite", "IoTSharp.Data.Sqlite\IoTSharp.Data.Sqlite.csproj", "{C4450C7C-DD38-47A2-90C7-3F774B09CD69}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IoTSharp.Interpreter", "IoTSharp.Interpreter\IoTSharp.Interpreter.csproj", "{01210118-0A41-4A6D-9B4A-06F5540B139A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IoTSharp.Interpreter", "IoTSharp.Interpreter\IoTSharp.Interpreter.csproj", "{01210118-0A41-4A6D-9B4A-06F5540B139A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IoTSharp.TaskAction", "IoTSharp.TaskAction\IoTSharp.TaskAction.csproj", "{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IoTSharp.Data.InMemory", "IoTSharp.Data.InMemory\IoTSharp.Data.InMemory.csproj", "{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -366,6 +372,46 @@ Global
 		{01210118-0A41-4A6D-9B4A-06F5540B139A}.Release|x64.Build.0 = Release|Any CPU
 		{01210118-0A41-4A6D-9B4A-06F5540B139A}.Release|x86.ActiveCfg = Release|Any CPU
 		{01210118-0A41-4A6D-9B4A-06F5540B139A}.Release|x86.Build.0 = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|ARM.Build.0 = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|x64.Build.0 = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Debug|x86.Build.0 = Debug|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|ARM.ActiveCfg = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|ARM.Build.0 = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|ARM64.Build.0 = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|x64.ActiveCfg = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|x64.Build.0 = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|x86.ActiveCfg = Release|Any CPU
+		{01671BDE-398D-423C-B3E4-A05FF0AB7B4F}.Release|x86.Build.0 = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|ARM.Build.0 = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|x64.Build.0 = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Debug|x86.Build.0 = Debug|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|ARM.ActiveCfg = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|ARM.Build.0 = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|ARM64.Build.0 = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|x64.ActiveCfg = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|x64.Build.0 = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|x86.ActiveCfg = Release|Any CPU
+		{A57917E3-6F60-4D0E-8F13-36E5088DEFCE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

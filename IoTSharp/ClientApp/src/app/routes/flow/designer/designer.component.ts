@@ -17,8 +17,6 @@ export class DesignerComponent implements OnInit {
   constructor(
     private _router: ActivatedRoute,
     private router: Router,
-    private _formBuilder: FormBuilder,
-    private _httpClient: _HttpClient,
   ) {}
 
   ngOnInit(): void {
@@ -43,6 +41,8 @@ export class DesignerComponent implements OnInit {
         }),
       )
       .subscribe();
+
+    
   }
 
   title = '开始设计';
@@ -69,10 +69,16 @@ export class DesignerComponent implements OnInit {
 
   savediagram() {
     this.diagram.savediagram();
-
     this.router.navigate(['/iot/flow/flowlist'], {
-     
     });
-
   }
+
+
+  returntolist(){
+
+    this.router.navigate(['/iot/flow/flowlist'])
+  }
+
+
+
 }

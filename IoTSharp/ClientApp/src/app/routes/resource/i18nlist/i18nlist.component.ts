@@ -56,8 +56,8 @@ export class I18nlistComponent implements OnInit {
   req: STReq = { method: 'POST', allInBody: true, reName: { pi: 'offset', ps: 'limit' }, params: this.q };
   res: STRes = {
     reName: {
-      total: 'result.total',
-      list: 'result.rows',
+      total: 'data.total',
+      list: 'data.rows',
     },
   };
   constructor(

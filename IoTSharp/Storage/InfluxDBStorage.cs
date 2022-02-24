@@ -6,7 +6,6 @@ using InfluxDB.Client.Writes;
 using IoTSharp.Data;
 using IoTSharp.Dtos;
 using IoTSharp.Extensions;
-using IoTSharp.Queue;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
@@ -126,11 +125,37 @@ from(bucket: ""{_bucket}"")
                     {
                         KeyName = fr.GetField(),
                         DateTime = fr.GetTimeInDateTime().GetValueOrDefault(DateTime.MinValue).ToLocalTime(),
-                        Value = fr.GetValue()
+                        Value = fr.GetValue() ,
+                         DataType= InfluxTypeToIoTSharpType(ft.Columns.Find(fv=>fv.Label=="_value")?.DataType)
                     });
                 });
             });
             return dt;
+        }
+        Data.DataType InfluxTypeToIoTSharpType(string _itype)
+        {
+            Data.DataType data = DataType.String;
+            switch (_itype)
+            {
+                case "long":
+                    data = DataType.Long;
+                    break;
+                case "double":
+                    data = DataType.Double;
+                    break;
+                case "boolean":
+                case "bool":
+                    data = DataType.Boolean;
+                    break;
+                case "dateTime:RFC3339":
+                    data = DataType.DateTime;
+                    break;
+                case "string":
+                default:
+                    data = DataType.String;
+                    break;
+            }
+            return data;
         }
 
         public Task<List<TelemetryDataDto>> LoadTelemetryAsync(Guid deviceId, DateTime begin)
@@ -152,9 +177,10 @@ from(bucket: ""{_bucket}"")
             return FluxToDtoAsync(v);
         }
 
-        public async Task<bool> StoreTelemetryAsync(RawMsg msg)
+        public async Task<(bool result, List<TelemetryData> telemetries)> StoreTelemetryAsync(RawMsg msg  )
         {
             bool result = false;
+            List<TelemetryData> telemetries = new List<TelemetryData>(); ;
             try
             {
                
@@ -202,6 +228,7 @@ from(bucket: ""{_bucket}"")
                             {
                                 point = point.Timestamp(DateTime.UtcNow, WritePrecision.Ns);
                                 lst.Add(point);
+                                telemetries.Add(tdata);
                             }
                         }
                     });
@@ -217,7 +244,7 @@ from(bucket: ""{_bucket}"")
             {
                 _logger.LogError(ex, $"{msg.DeviceId}数据处理失败{ex.Message} {ex.InnerException?.Message} ");
             }
-            return result;
+            return (result, telemetries);
         }
     }
 }

@@ -1,11 +1,10 @@
-import { Component, OnInit, ViewChild, Input, ChangeDetectorRef, TemplateRef, OnDestroy } from '@angular/core';
+import { Component, OnInit, ViewChild, Input, OnDestroy } from '@angular/core';
 import { _HttpClient } from '@delon/theme';
-import { NzTimelineComponent, NzTimelineItemComponent, TimelineService } from 'ng-zorro-antd/timeline';
 
-import { concat, interval, Observable, Subject, Subscription } from 'rxjs';
+import { concat, interval, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { appmessage } from 'src/app/routes/common/AppMessage';
-import { ruleflow } from 'src/app/routes/flow/flowlist/flowlist.component';
+import { flowrule } from 'src/app/routes/flow/flowlist/flowlist.component';
 import { FlowviewerComponent } from 'src/app/routes/widgets/flowviewer/flowviewer.component';
 import { DynamicformviewComponent } from '../../dynamicform/dynamicformview/dynamicformview.component';
 
@@ -16,72 +15,47 @@ import { DynamicformviewComponent } from '../../dynamicform/dynamicformview/dyna
 })
 export class FlowsimulatorComponent implements OnInit, OnDestroy {
   @Input()
-  id: Number;
+  id: string;
   listOfOption = [];
   obs: Subscription;
-  // @ViewChild('flowtimeline', { static: true })
-  // flowtimeline: NzTimelineComponent;
+  param:string;
   @ViewChild('flowview', { static: true })
   flowview: FlowviewerComponent;
   @ViewChild('dynamicformview', { static: true })
   dynamicformview: DynamicformviewComponent;
   constructor(
-    private http: _HttpClient,
-    private cdr: ChangeDetectorRef, //  private timelineservice: TimelineService
+    private http: _HttpClient, 
   ) {}
   ngOnDestroy(): void {
     if (this.obs) {
       this.obs.unsubscribe();
     }
   }
-  // @ViewChild('TimeLineItemTemplate', { read: TemplateRef }) TimeLineItemTemplate: TemplateRef<any>;
+
   thisisyourtestdataformid: Number = 1;
   steps: any = [];
   nodes = [];
   current: 0;
   ngOnInit(): void {
     concat(
-      this.http.post('api/dynamicforminfo/index', { DictionaryGroupId: 1, pi: 0, ps: 20, limit: 20, offset: 0 }).pipe(
-        map((x) => {
-          this.listOfOption = x.result.rows.map((x) => {
-            return { label: x.formName, value: x.formId };
-          });
+      // this.http.post('api/dynamicforminfo/index', { DictionaryGroupId: 1, pi: 0, ps: 20, limit: 20, offset: 0 }).pipe(
+      //   map((x) => {
+      //     this.listOfOption = x.data.rows.map((x) => {
+      //       return { label: x.formName, value: x.formId };
+      //     });
 
-          this.dynamicformview.id = this.listOfOption[0]?.value;
-          console.log(this.dynamicformview.id);
-        }),
-      ),
-      this.http.get<appmessage<ruleflow>>('api/rules/get?id=' + this.id).pipe(
+      //     this.dynamicformview.id = this.listOfOption[0]?.value;
+      //     console.log(this.dynamicformview.id);
+      //   }),
+      // ),
+      this.http.get<appmessage<flowrule>>('api/rules/get?id=' + this.id).pipe(
         map((x) => {
-          this.flowview.diagramdata = x.result;
+          this.flowview.diagramdata = x.data;
           this.flowview.loadXml();
         }),
       ),
     ).subscribe();
 
-    // this.http.get<appmessage<ruleflow>>('api/rules/get?id=' + this.id).subscribe(
-    //   (next) => {
-    //     this.flowview.diagramdata = next.result;
-
-    //     this.flowview.loadXml();
-    //   },
-    //   (error) => {},
-    //   () => {},
-    // );
-
-    //it's deadend，nothing you can get
-    // let item = new NzTimelineItemComponent(this.cdr, this.timelineservice);
-    // item.borderColor = '#eeeeff';
-    // item.template = this.TimeLineItemTemplate;
-
-    // let item1 = new NzTimelineItemComponent(this.cdr, this.timelineservice);
-    // item1.borderColor = '#eeeeff';
-    // item1.template = this.TimeLineItemTemplate;
-
-    // this.flowtimeline.timelineItems = [...this.flowtimeline.timelineItems, item, item1];
-    // this.cdr.detectChanges();
-
-    // console.log(this.flowtimeline.timelineItems);
   }
   formIdChange(iamnottheformidyouwantit): void {
     this.dynamicformview.id = this.thisisyourtestdataformid;
@@ -89,15 +63,15 @@ export class FlowsimulatorComponent implements OnInit, OnDestroy {
   onsubmit(formdata) {
     this.http
       .post('api/rules/active', {
-        form: formdata,
+        form: JSON.parse(this.param),
         extradata: {
-          formid: this.thisisyourtestdataformid,
+  //       formid: this.thisisyourtestdataformid,
           ruleflowid: this.id,
         },
       })
       .subscribe(
         (next) => {
-          this.nodes = next.result; //
+          this.nodes = next.data; //
           this.play();
         },
         (error) => {},
@@ -109,7 +83,7 @@ export class FlowsimulatorComponent implements OnInit, OnDestroy {
     if (this.obs) {
       this.obs.unsubscribe();
     }
-    this.obs = interval(1000).subscribe(async (x) => {
+    this.obs = interval(1500).subscribe(async (x) => {
       var index = x % this.nodes.length;
       if (index == 0) {
         await this.flowview.redraw();
@@ -121,12 +95,9 @@ export class FlowsimulatorComponent implements OnInit, OnDestroy {
 
       for (const node of this.nodes[index].nodes) {
         this.flowview.sethighlight(node.bpmnid);
-        this.steps = [...this.steps, { addDate: node.addDate, operationDesc: node.operationDesc, nzStatus: 'process' }];
+        this.steps = [...this.steps, { addDate: node.addDate, operationDesc: node.operationDesc, nzStatus: 'process',data:node.data }];
       }
 
-      // if (this.nodes.length + 3 == x) {
-      //   this.obs.unsubscribe();
-      // }
     });
   }
 }

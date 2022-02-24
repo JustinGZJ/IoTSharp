@@ -50,7 +50,7 @@ export class DynamicformtesterComponent implements OnInit {
 
     this._httpClient.get<AppMessage>('api/DynamicFormInfo/get?id=' + this.id).subscribe(
       (next) => {
-        this.dcv.code = next.result.modelClass;
+        this.dcv.code = next.data.modelClass;
       },
       (error) => {},
       () => {},

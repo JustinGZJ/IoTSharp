@@ -71,6 +71,20 @@
             <param name="model"></param>
             <returns></returns>
         </member>
+        <member name="M:IoTSharp.Controllers.AccountController.CreateToken(System.String)">
+            <summary>
+            
+            </summary>
+            <param name="name"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.AccountController.RefreshToken(IoTSharp.Dtos.RefreshTokenDto)">
+            <summary>
+            刷新JWT Token
+            </summary>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
         <member name="M:IoTSharp.Controllers.AccountController.Logout">
             <summary>
             退出账号
@@ -84,11 +98,43 @@
             <param name="model"></param>
             <returns >返回登录结果</returns>
         </member>
+        <member name="M:IoTSharp.Controllers.AccountController.Create(IoTSharp.Dtos.InstallDto)">
+            <summary>
+            注册新的租户，客户，以及用户
+            </summary>
+            <param name="model"></param>
+            <returns >返回登录结果</returns>
+        </member>
         <member name="M:IoTSharp.Controllers.AccountController.All(System.Guid)">
             <summary>
             返回客户所属用户列表
             </summary>
             <param name="customerId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.AccountController.Get(System.String)">
+            <summary>
+            返回用户信息
+            </summary>
+            <param name="Id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.AccountController.Modify(IoTSharp.Dtos.UserItemDto)">
+            <summary>
+            修改用户信息
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.AccountController.ModifyMyInfo(IoTSharp.Dtos.UserItemDto)">
+            <summary>
+            修改当前用户信息
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.AccountController.ModifyMyPassword(IoTSharp.Dtos.UserPassword)">
+            <summary>
+            修改当前用户信息
+            </summary>
             <returns></returns>
         </member>
         <member name="T:IoTSharp.Controllers.AuthorizedKeysController">
@@ -114,11 +160,16 @@
             客户管理
             </summary>
         </member>
-        <member name="M:IoTSharp.Controllers.CustomersController.GetCustomers(System.Guid)">
+        <member name="M:IoTSharp.Controllers.CustomersController.GetAllCustomers(System.Guid)">
             <summary>
             获取指定租户下的所有客户
             </summary>
-            <param name="tenantId">租户</param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.CustomersController.GetCustomers(IoTSharp.Controllers.Models.CustomerParam)">
+            <summary>
+            获取指定租户下的所有客户
+            </summary>
             <returns></returns>
         </member>
         <member name="M:IoTSharp.Controllers.CustomersController.GetCustomer(System.Guid)">
@@ -155,11 +206,17 @@
             设备管理
             </summary>
         </member>
-        <member name="M:IoTSharp.Controllers.DevicesController.GetDevices(System.Guid)">
+        <member name="M:IoTSharp.Controllers.DevicesController.GetAllDevices(System.Guid)">
             <summary>
             获取指定客户的设备列表
             </summary>
             <param name="customerId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.DevicesController.GetDevices(IoTSharp.Controllers.Models.DeviceParam)">
+            <summary>
+            获取指定客户的设备列表
+            </summary>
             <returns></returns>
         </member>
         <member name="M:IoTSharp.Controllers.DevicesController.GetIdentity(System.Guid)">
@@ -168,6 +225,20 @@
             </summary>
             <param name="deviceId"></param>
             <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.DevicesController.CreateX509Identity(System.Guid)">
+            <summary>
+            获取指定设备的认证方式信息
+            </summary>
+            <param name="deviceId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.DevicesController.DownloadCertificates(System.Guid)">
+            <summary>
+            下载证书
+            </summary>
+            <param name="deviceId"></param>
+            <returns>一个压缩包，包含ca.crt client.crt client.key</returns>
         </member>
         <member name="M:IoTSharp.Controllers.DevicesController.GetAttributeLatest(System.Guid)">
              <summary>
@@ -282,26 +353,56 @@
             <param name="attributes">attributes</param>
             <returns></returns>
         </member>
-        <member name="M:IoTSharp.Controllers.DevicesController.GetSessionStatus(System.Guid)">
+        <member name="M:IoTSharp.Controllers.DevicesController.PushDataToMap(System.String,System.String,System.String)">
             <summary>
-            SessionStatus
+            上传原始Json或者xml 通过规则链进行解析。 
             </summary>
-            <param name="deviceId"></param>
+            <param name="access_token">Device 's access token </param>
+            <param name="body"></param>
+            <param name="format"></param>
             <returns></returns>
         </member>
-        <member name="M:IoTSharp.Controllers.DevicesController.GetClientStatus(System.Guid)">
+        <member name="M:IoTSharp.Controllers.DevicesController.PushDataToRuleChains(System.String,System.String,System.String)">
+            <summary>
+            上传原始Json或者xml 通过规则链进行解析。 
+            </summary>
+            <param name="access_token">Device 's access token </param>
+            <param name="body">原始数据， Post 在Body里面。 </param>
+            <param name="format">只支持json和 xml， XML会转换为 Json。</param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.DevicesController.AddAttribute(System.String,IoTSharp.Controllers.DeviceAttributeDto)">
+            <summary>
+            服务侧新增属性
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.DevicesController.EditAttribute(System.Guid,IoTSharp.Dtos.DeviceAttrEditDto)">
+            <summary>
+            服务侧和任意侧属性修改
+            </summary>
+            <param name="devid"></param>
+            <param name="attributes"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.DevicesController.GetSessionStatus">
             <summary>
             SessionStatus
             </summary>
-            <param name="deviceId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.DevicesController.GetClientStatus">
+            <summary>
+            SessionStatus
+            </summary>
             <returns></returns>
         </member>
         <member name="M:IoTSharp.Controllers.DictionaryController.Delete(System.Int32)">
-            <summary>
+             <summary>
             
-            </summary>
-            <param name="id"></param>
-            <returns></returns>
+             </summary>
+             <param name="id"></param>
+             <returns></returns>
         </member>
         <member name="M:IoTSharp.Controllers.DictionaryGroupController.Save(IoTSharp.Data.BaseDictionaryGroup)">
             <summary>
@@ -318,11 +419,11 @@
             <returns></returns>
         </member>
         <member name="M:IoTSharp.Controllers.DynamicFormInfoController.Save(IoTSharp.Data.DynamicFormInfo)">
-            <summary>
+             <summary>
             
-            </summary>
-            <param name="m"></param>
-            <returns></returns>
+             </summary>
+             <param name="m"></param>
+             <returns></returns>
         </member>
         <member name="T:IoTSharp.Controllers.InstallerController">
             <summary>
@@ -335,10 +436,37 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:IoTSharp.Controllers.InstallerController.CreateRootCertificate(IoTSharp.Dtos.CreateRootCertificateDto)">
+            <summary>
+            域名可以不配置， 默认会使用机器名  
+            </summary>
+            <returns></returns>
+        </member>
         <member name="T:IoTSharp.Controllers.MenuController">
             <summary>
             this is test purpose
             </summary>
+        </member>
+        <member name="M:IoTSharp.Controllers.RulesController.UpdateFlowExpression(IoTSharp.Dtos.UpdateFlowExpression)">
+             <summary>
+             更新节点的条件表达式
+             </summary>
+             <returns> </returns>
+            
+        </member>
+        <member name="M:IoTSharp.Controllers.RulesController.Fork(IoTSharp.Data.FlowRule)">
+            <summary>
+            复制一个规则副本
+            </summary>
+            <param name="flowRule"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.Controllers.RulesController.FlowEvents(IoTSharp.Controllers.Models.EventParam)">
+             <summary>
+            
+             </summary>
+             <param name="m"></param>
+             <returns></returns>
         </member>
         <member name="T:IoTSharp.Controllers.TenantsController">
             <summary>
@@ -450,6 +578,51 @@
             用户名密码
             </summary>
         </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.Name">
+            <summary>
+            设备名称
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.DeviceType">
+            <summary>
+            设备类型
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.Online">
+            <summary>
+            在线
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.LastActive">
+            <summary>
+            最后一次活跃时间
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.Timeout">
+            <summary>
+            超时时间 秒数 
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.Owner">
+            <summary>
+            所有者
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.Tenant">
+            <summary>
+            租户
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.DeviceDetailDto.Customer">
+            <summary>
+            客户
+            </summary>
+        </member>
+        <member name="P:IoTSharp.Dtos.FlowOperationDto.NodeStatus">
+            <summary>
+            节点处理状态，0 创建完
+            </summary>
+        </member>
         <member name="P:IoTSharp.Dtos.InstallDto.Email">
             <summary>
             系统管理员用户名
@@ -495,11 +668,94 @@
             是否被安装
             </summary>
         </member>
-        <member name="M:IoTSharp.IoTSharpExtension.CheckOrUpdateDevStatus(IoTSharp.Data.Device)">
+        <member name="M:IoTSharp.IoTSharpExtension.JustFill``1(IoTSharp.Data.ApplicationDbContext,Microsoft.AspNetCore.Mvc.ControllerBase,``0)">
             <summary>
-            //如果上次活动时间距离当前时间超过10秒 或者 设备离线状态， 则更新状态。
+            根据用户信息填写表里面的内容
             </summary>
-            <param name="device"></param>
+            <typeparam name="T"></typeparam>
+            <param name="_context"></param>
+            <param name="controller"></param>
+            <param name="ak"></param>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.JustCustomer``1(Microsoft.EntityFrameworkCore.DbSet{``0},Microsoft.AspNetCore.Mvc.ControllerBase)">
+            <summary>
+            查询当前客户的数据
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="ts"></param>
+            <param name="controller"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.JustCustomer``1(Microsoft.EntityFrameworkCore.DbSet{``0},System.Guid)">
+            <summary>
+            查询指定客户的数据
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="ts"></param>
+            <param name="_customerId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.JustTenant``1(Microsoft.EntityFrameworkCore.DbSet{``0},Microsoft.AspNetCore.Mvc.ControllerBase)">
+            <summary>
+            查询当前用户所在租户的数据
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="ts"></param>
+            <param name="controller"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.JustTenant``1(Microsoft.EntityFrameworkCore.DbSet{``0},System.Guid)">
+            <summary>
+            查询指定租户的数据
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="ts"></param>
+            <param name="_tenantId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.GetCustomer(IoTSharp.Data.ApplicationDbContext,System.Guid)">
+            <summary>
+            获取指定客户信息
+            </summary>
+            <param name="context"></param>
+            <param name="custId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.GetTenant(IoTSharp.Data.ApplicationDbContext,System.Guid)">
+            <summary>
+            获取指定的租户信息
+            </summary>
+            <param name="context"></param>
+            <param name="tenId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.GetEmail(System.Security.Claims.ClaimsPrincipal)">
+            <summary>
+            获取当前用户的邮箱
+            </summary>
+            <param name="_user"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.GetUserId(System.Security.Claims.ClaimsPrincipal)">
+            <summary>
+            获取当前用户的ID
+            </summary>
+            <param name="_user"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.GetTenantId(System.Security.Claims.ClaimsPrincipal)">
+            <summary>
+            获取当前用户的ID
+            </summary>
+            <param name="_user"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.IoTSharpExtension.GetCustomerId(System.Security.Claims.ClaimsPrincipal)">
+            <summary>
+            获取当前用户的客户ID
+            </summary>
+            <param name="_user"></param>
+            <returns></returns>
         </member>
         <member name="M:IoTSharp.IoTSharpExtension.AddJWTSecurity(NSwag.Generation.AspNetCore.AspNetCoreOpenApiDocumentGeneratorSettings)">
             <summary>
@@ -507,12 +763,26 @@
             </summary>
             <param name="configure"></param>
         </member>
-        <member name="T:IoTSharp.Handlers.EventBusHandler">
+        <member name="M:IoTSharp.IoTSharpExtension.JudgeOrCreateNewDevice(IoTSharp.Data.Device,System.String,Microsoft.Extensions.DependencyInjection.IServiceScopeFactory,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            创建网关的子设备。 
+            </summary>
+            <param name="device">父设备</param>
+            <param name="devname">子设备名称</param>
+            <param name="_scopeFactor"></param>
+            <param name="_logger"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IoTSharp.FlowRuleEngine.FlowRuleProcessor.RunFlowRules(System.Guid,System.Object,System.Guid,IoTSharp.Data.EventType,System.String)">
              <summary>
-             iotsharp.services.datastream
-             </summary>
-            <remarks>Note: The injection of services needs before of `services.AddCap()`</remarks>
             
+             </summary>
+             <param name="ruleid"> 规则Id</param>
+             <param name="data">数据</param>
+             <param name="deviceId">创建者(可以是模拟器(测试)，可以是设备，在EventType中区分一下)</param>
+             <param name="type">类型</param>
+             <param name="bizId">业务Id(第三方唯一Id，用于取回事件以及记录的标识)</param>
+             <returns> 返回所有节点的记录信息，需要保存则保存</returns>
         </member>
         <member name="T:IoTSharp.Properties.Resources">
             <summary>
@@ -566,6 +836,11 @@
             <param name="keyname"></param>
             <returns></returns>
             <exception cref="!:https://github.com/taosdata/TDengine/issues/4269">务必注意此bug</exception>
+        </member>
+        <member name="F:IoTSharp.Storage.TimescaleDBStorage._scopeFactor">
+            <summary>
+            解决单例注入问题 jy 
+            </summary>
         </member>
         <member name="T:LiteQueue.LiteQueue`1">
             <summary>

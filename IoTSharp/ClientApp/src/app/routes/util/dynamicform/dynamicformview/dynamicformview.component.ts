@@ -54,7 +54,7 @@ export class DynamicformviewComponent implements OnInit {
     this._httpClient.get('api/DynamicFormInfo/GetFormFieldValue?FormId=' + this.id + '&BizId=0').subscribe(
       (x) => {
         var properties = {};
-        x.result = x.result.map((x) => {
+        x.data = x.data.map((x) => {
           return {
             Creator: x.creator,
             FieldCode: x.fieldCode,
@@ -79,7 +79,7 @@ export class DynamicformviewComponent implements OnInit {
             IsRequired: x.isRequired,
           };
         });
-        for (let a of x.result) {
+        for (let a of x.data) {
           var Schame = JSON.parse(a.FieldUIElementSchema);
           switch (a.FieldUIElement) {
             case 1:
@@ -150,12 +150,12 @@ export class DynamicformviewComponent implements OnInit {
                   asyncData: () =>
                     this._httpClient.get(a.FieldValueDataSource).pipe(
                       map((x) => {
-                        return x.Result;
+                        return x.data;
                       }),
                     ),
                   // this._httpClient.get(a.FieldValueDataSource).pipe(
                   //   map((x) => {
-                  //     return x.Result.map((y) => {
+                  //     return x.data.map((y) => {
                   //       return {
                   //         value: y[Schame.IotSharp.key],
                   //         label: y[Schame.IotSharp.value],
@@ -191,12 +191,12 @@ export class DynamicformviewComponent implements OnInit {
                   asyncData: () =>
                     this._httpClient.get(a.FieldValueDataSource).pipe(
                       map((x) => {
-                        return x.Result;
+                        return x.data;
                       }),
                     ),
                   // this._httpClient.get(a.FieldValueDataSource).pipe(
                   //   map((x) => {
-                  //     return x.Result.map((y) => {
+                  //     return x.data.map((y) => {
                   //       return {
                   //         value: y[Schame.IotSharp.key],
                   //         label: y[Schame.IotSharp.value],
@@ -338,13 +338,13 @@ export class DynamicformviewComponent implements OnInit {
                         .get(a.FieldValueDataSource + '?q=' + q)
                         .pipe(
                           map((x) => {
-                            return x.result;
+                            return x.data;
                           }),
                         )
                         .toPromise();
                       // this._httpClient.get(a.FieldValueDataSource).pipe(
                       //   map((x) => {
-                      //     return x.Result.map((y) => {
+                      //     return x.data.map((y) => {
                       //       return { value: y[Schame.IotSharp.key], label: y[Schame.IotSharp.value] };
                       //     });
                       //   }),
@@ -362,12 +362,12 @@ export class DynamicformviewComponent implements OnInit {
                     asyncData: () =>
                       this._httpClient.get(a.FieldValueDataSource).pipe(
                         map((x) => {
-                          return x.result;
+                          return x.data;
                         }),
                       ),
                     // this._httpClient.get(a.FieldValueDataSource).pipe(
                     //   map((x) => {
-                    //     return x.Result.map((y) => {
+                    //     return x.data.map((y) => {
                     //       return { value: y[Schame.IotSharp.key], label: y[Schame.IotSharp.value] };
                     //     });
                     //   }),
@@ -436,12 +436,12 @@ export class DynamicformviewComponent implements OnInit {
                   asyncData: () =>
                     this._httpClient.get(a.FieldValueDataSource).pipe(
                       map((x) => {
-                        return x.Result;
+                        return x.data;
                       }),
                     ),
                   // this._httpClient.get(a.FieldValueDataSource).pipe(
                   //   map((x) => {
-                  //     return x.Result.map((y) => {
+                  //     return x.data.map((y) => {
                   //       return { value: y[Schame.IotSharp.key], title: y[Schame.IotSharp.value] };
                   //     });
                   //   }),
@@ -543,6 +543,31 @@ export class DynamicformviewComponent implements OnInit {
               };
 
               break;
+
+              case 20:
+                //Schame.IotSharp.key
+                properties[a.FieldCode] = {
+                  type: 'string',
+                  title: a.FieldName,
+                  default: a.FieldValue,
+                  ui: {
+                    widget: 'codefield',
+                    loadingTip: 'loading...',
+                    config: { theme: 'vs-dark', language: 'json' },
+                    value: a.FieldValue,
+                  },
+                };
+  
+                break;
+  
+
+
+           
+
+
+
+
+
           }
         }
 
@@ -574,7 +599,7 @@ export class DynamicformviewComponent implements OnInit {
   //  this.AllSuportType.filter(c=>c.value===)
   // this.http.get('api/common/dictionaryservice/gettargettype?id=' + type + '&format=' + format).subscribe(
   //   (x) => {
-  //     this.AllSuportType = x.Result;
+  //     this.AllSuportType = x.data;
   //   },
   //   (y) => {},
   //   () => {},

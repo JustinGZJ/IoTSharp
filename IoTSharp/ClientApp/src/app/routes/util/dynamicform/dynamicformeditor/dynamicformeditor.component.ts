@@ -32,15 +32,15 @@ export class DynamicformeditorComponent implements OnInit {
   submitting = false;
   ngOnInit() {
     this.form = this.fb.group({
-      FormName: [null, [Validators.required]],
-      FormId: [0, []],
-      FormDesc: [null, []],
+      formName: [null, [Validators.required]],
+      formId: [0, []],
+      formDesc: [null, []],
     });
 
     if (this.id !== -1) {
       this._httpClient.get<AppMessage>('api/dynamicforminfo/get?id=' + this.id).subscribe(
         (x) => {
-          this.form.patchValue(x.result);
+          this.form.patchValue(x.data);
         },
         (y) => {},
         () => {},
@@ -54,10 +54,13 @@ export class DynamicformeditorComponent implements OnInit {
     this._httpClient.post(uri, this.form.value).subscribe(
       (x) => {
         this.submitting = false;
-        //   this.router.navigateByUrl('manage/uri/userlist');
+        this.msg.create('success', '表单保存成功');
+        this.close();
       },
       (y) => {
         this.submitting = false;
+        this.msg.create('error', '表单保存失败');
+        this.close();
       },
       () => {
 

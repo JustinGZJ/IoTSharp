@@ -6,7 +6,7 @@ import { environment } from '@env/environment';
 @Component({
   selector: 'layout-basic',
   template: `
-    <layout-default [options]="options" [asideUser]="asideUserTpl" [content]="contentTpl">
+    <layout-default [options]="options" [content]="contentTpl" [customError]="null">
       <layout-default-header-item direction="left">
         <a layout-default-header-item-trigger href="//github.com/IoTSharp/IoTSharp" target="_blank">
           <i nz-icon nzType="github"></i>
@@ -24,7 +24,7 @@ import { environment } from '@env/environment';
       </layout-default-header-item>
       <layout-default-header-item direction="middle">
         <header-search class="alain-default__search" [(toggleChange)]="searchToggleStatus"></header-search>
-      </layout-default-header-item>-->
+      </layout-default-header-item> -->
       <layout-default-header-item direction="right">
         <header-notify></header-notify>
       </layout-default-header-item>
@@ -58,7 +58,7 @@ import { environment } from '@env/environment';
       <layout-default-header-item direction="right">
         <header-user></header-user>
       </layout-default-header-item>
-      <ng-template #asideUserTpl>
+      <!-- <ng-template #asideUserTpl>
         <div nz-dropdown nzTrigger="click" [nzDropdownMenu]="userMenu" class="alain-default__aside-user">
           <nz-avatar class="alain-default__aside-user-avatar" [nzSrc]="user.avatar"></nz-avatar>
           <div class="alain-default__aside-user-info">
@@ -68,11 +68,11 @@ import { environment } from '@env/environment';
         </div>
         <nz-dropdown-menu #userMenu="nzDropdownMenu">
           <ul nz-menu>
-            <li nz-menu-item routerLink="/pro/account/center">{{ 'menu.account.center' | translate }}</li>
-            <li nz-menu-item routerLink="/pro/account/settings">{{ 'menu.account.settings' | translate }}</li>
+            <li nz-menu-item routerLink="/pro/account/center">{{ 'menu.account.center' | i18n }}</li>
+            <li nz-menu-item routerLink="/pro/account/settings">{{ 'menu.account.settings' | i18n }}</li>
           </ul>
         </nz-dropdown-menu>
-      </ng-template>
+      </ng-template> -->
       <ng-template #contentTpl>
         <router-outlet></router-outlet>
       </ng-template>
@@ -80,12 +80,12 @@ import { environment } from '@env/environment';
 
     <setting-drawer *ngIf="showSettingDrawer"></setting-drawer>
     <theme-btn></theme-btn>
-  `,
+  `
 })
 export class LayoutBasicComponent {
   options: LayoutDefaultOptions = {
     logoExpanded: `./assets/logo-full.png`,
-    logoCollapsed: `./assets/logo.png`,
+    logoCollapsed: `./assets/logo.png`
   };
   searchToggleStatus = false;
   showSettingDrawer = !environment.production;

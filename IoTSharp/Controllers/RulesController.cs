@@ -1,33 +1,25 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-using Castle.Components.DictionaryAdapter;
-using IoTSharp.Controllers.Models;
+﻿using IoTSharp.Controllers.Models;
 using IoTSharp.Data;
-using IoTSharp.FlowRuleEngine.Models;
-using IoTSharp.FlowRuleEngine.Models.Task;
+using IoTSharp.Dtos;
+using IoTSharp.Extensions;
+using IoTSharp.FlowRuleEngine;
 using IoTSharp.Models;
 using IoTSharp.Models.Rule;
-using IoTSharp.Models.Rule.Params;
 using LinqKit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.CodeDom.Compiler;
-using System.Diagnostics;
+using System;
+using System.Collections.Generic;
 using System.Dynamic;
-using System.IO;
-using System.Reflection;
-using IoTSharp.Extensions;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Emit;
-using Microsoft.EntityFrameworkCore;
-
+using System.Linq;
+using System.Linq.Dynamic.Core;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace IoTSharp.Controllers
 {
@@ -36,288 +28,504 @@ namespace IoTSharp.Controllers
     [ApiController]
     public class RulesController : ControllerBase
     {
-
         private ApplicationDbContext _context;
+        private readonly FlowRuleProcessor _flowRuleProcessor;
+        private readonly TaskExecutorHelper _helper;
         private UserManager<IdentityUser> _userManager;
 
-        public RulesController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public RulesController(ApplicationDbContext context, UserManager<IdentityUser> userManager, FlowRuleProcessor flowRuleProcessor, TaskExecutorHelper helper)
         {
             this._userManager = userManager;
             this._context = context;
+            _flowRuleProcessor = flowRuleProcessor;
+            _helper = helper;
+        }
+
+        /// <summary>
+        /// 更新节点的条件表达式
+        /// </summary>
+        /// <returns> </returns>
+        ///
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<bool>> UpdateFlowExpression(UpdateFlowExpression m)
+        {
+            var profile = this.GetUserProfile();
+            var flow = await _context.Flows.SingleOrDefaultAsync(c => c.FlowId == m.FlowId && c.Tenant.Id == profile.Tenant);
+            if (flow != null)
+            {
+                flow.Conditionexpression = m.Expression;
+                _context.Flows.Update(flow);
+                await _context.SaveChangesAsync();
+
+                return new ApiResult<bool>(ApiCode.Success, "Ok", true);
+            }
+            return new ApiResult<bool>(ApiCode.InValidData, "can't find this object", false);
         }
 
         [HttpPost("[action]")]
-        public async Task<AppMessage> Index([FromBody] RulePageParam m)
+        public ApiResult<PagedData<FlowRule>> Index([FromBody] RulePageParam m)
         {
+            var profile = this.GetUserProfile();
 
-
-            var profile = await this.GetUserProfile();
-
-            Expression<Func<FlowRule, bool>> expression = x => x.RuleStatus > -1;
+            Expression<Func<FlowRule, bool>> condition = x => x.RuleStatus > -1 && x.Tenant.Id == profile.Tenant;
             if (!string.IsNullOrEmpty(m.Name))
             {
-                expression = expression.And(x => x.Name.Contains(m.Name));
+                condition = condition.And(x => x.Name.Contains(m.Name));
             }
 
             if (m.CreatTime != null && m.CreatTime.Length == 2)
             {
-                expression = expression.And(x => x.CreatTime > m.CreatTime[0] && x.CreatTime < m.CreatTime[1]);
+                condition = condition.And(x => x.CreatTime > m.CreatTime[0] && x.CreatTime < m.CreatTime[1]);
             }
 
             if (!string.IsNullOrEmpty(m.Creator))
             {
-                expression = expression.And(x => x.Creator == m.Creator);
+                condition = condition.And(x => x.Creator == m.Creator);
             }
 
-
-
-            return new AppMessage()
+            return new ApiResult<PagedData<FlowRule>>(ApiCode.Success, "OK", new PagedData<FlowRule>
             {
-                ErrType = ErrType.正常返回,
-                Result = new
+                total = _context.FlowRules.Count(condition),
+                rows = _context.FlowRules.OrderByDescending(c => c.CreatTime).Where(condition).Skip((m.offset) * m.limit).Take(m.limit).ToList()
+            });
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<bool>> Save(FlowRule m)
+        {
+            var profile = this.GetUserProfile();
+            try
+            {
+                m.MountType = m.MountType;
+                m.RuleStatus = 1;
+                _context.JustFill(this, m);
+                m.CreatTime = DateTime.Now;
+                _context.FlowRules.Add(m);
+                await _context.SaveChangesAsync();
+                return new ApiResult<bool>(ApiCode.Success, "OK", true);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResult<bool>(ApiCode.Exception, ex.Message, false);
+            }
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<bool>> Update(FlowRule m)
+        {
+            var profile = this.GetUserProfile();
+            var flowrule = _context.FlowRules.SingleOrDefault(c => c.RuleId == m.RuleId && c.Tenant.Id == profile.Tenant);
+            if (flowrule != null)
+            {
+                try
                 {
-                    rows = await _context.FlowRules.OrderByDescending(c => c.RuleId).Where(expression).Skip(m.offset * m.limit).Take(m.limit)
-                        .ToListAsync(),
-                    totel = await _context.FlowRules.CountAsync(expression)
+                    flowrule.MountType = m.MountType;
+                    flowrule.Name = m.Name;
+                    flowrule.RuleDesc = m.RuleDesc;
+                    _context.FlowRules.Update(flowrule);
+                    await _context.SaveChangesAsync();
+                    return new ApiResult<bool>(ApiCode.Success, "OK", true);
+                }
+                catch (Exception ex)
+                {
+                    return new ApiResult<bool>(ApiCode.Exception, ex.Message, false);
+                }
+            }
+            return new ApiResult<bool>(ApiCode.Success, "can't find this object", false);
+        }
+
+        [HttpGet("[action]")]
+        public async Task<ApiResult<bool>> Delete(Guid id)
+        {
+            var profile = this.GetUserProfile();
+            var rule = _context.FlowRules.SingleOrDefault(c => c.RuleId == id && c.Tenant.Id == profile.Tenant);
+            if (rule != null)
+            {
+                try
+                {
+                    rule.RuleStatus = -1;
+                    _context.FlowRules.Update(rule);
+                    await _context.SaveChangesAsync();
+                    return new ApiResult<bool>(ApiCode.Success, "OK", true);
+                }
+                catch (Exception ex)
+                {
+                    return new ApiResult<bool>(ApiCode.Exception, ex.Message, false);
+                }
+            }
+
+            return new ApiResult<bool>(ApiCode.Success, "can't find this object", false);
+        }
+
+        [HttpGet("[action]")]
+        public ApiResult<FlowRule> Get(Guid id)
+        {
+            var profile = this.GetUserProfile();
+            var rule = _context.FlowRules.SingleOrDefault(c => c.RuleId == id && c.Tenant.Id == profile.Tenant);
+            if (rule != null)
+            {
+                return new ApiResult<FlowRule>(ApiCode.Success, "OK", rule);
+            }
+
+            return new ApiResult<FlowRule>(ApiCode.CantFindObject, "can't find this object", null);
+        }
+
+        /// <summary>
+        /// 复制一个规则副本
+        /// </summary>
+        /// <param name="flowRule"></param>
+        /// <returns></returns>
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<bool>> Fork(FlowRule flowRule)
+        {
+            var profile = this.GetUserProfile();
+            var rule = await _context.FlowRules.SingleOrDefaultAsync(c => c.RuleId == flowRule.RuleId && c.Tenant.Id == profile.Tenant);
+            if (rule != null)
+            {
+                var newrule = new FlowRule();
+                newrule.DefinitionsXml = rule.DefinitionsXml;
+                newrule.Describes = flowRule.Describes;
+                //     newrule.Creator = profile.Id.ToString();
+                newrule.Name = flowRule.Name;
+                newrule.CreatTime = DateTime.Now;
+                newrule.ExecutableCode = rule.ExecutableCode;
+                newrule.RuleDesc = flowRule.RuleDesc;
+                newrule.RuleStatus = 1;
+                newrule.MountType = flowRule.MountType;
+                newrule.ParentRuleId = rule.RuleId;
+                newrule.CreateId = new Guid();
+                newrule.SubVersion = rule.SubVersion + 0.01;
+                newrule.Runner = rule.Runner;
+                _context.FlowRules.Add(newrule);
+                await _context.SaveChangesAsync();
+
+                var flows = _context.Flows.Where(c => c.FlowRule.RuleId == rule.RuleId && c.CreateId == rule.CreateId).ToList();
+                var newflows = flows.Select(c => new Flow()
+                {
+                    FlowRule = newrule,
+                    Conditionexpression = c.Conditionexpression,
+                    CreateDate = DateTime.Now,
+                    FlowStatus = 1,
+                    FlowType = c.FlowType,
+                    Flowdesc = c.Flowdesc,
+                    Incoming = c.Incoming,
+                    Flowname = c.Flowname,
+                    NodeProcessClass = c.NodeProcessClass,
+                    NodeProcessMethod = c.NodeProcessMethod,
+                    NodeProcessParams = c.NodeProcessParams,
+                    NodeProcessScript = c.NodeProcessScript,
+                    NodeProcessScriptType = c.NodeProcessScriptType,
+                    NodeProcessType = c.NodeProcessType,
+                    ObjectId = c.ObjectId,
+                    Outgoing = c.Outgoing,
+                    SourceId = c.SourceId,
+                    TargetId = c.TargetId,
+
+                    bpmnid = c.bpmnid,
+                    CreateId = newrule.CreateId
+                }).ToList();
+                if (newflows.Count > 0)
+                {
+                    _context.Flows.AddRange(newflows);
+                    await _context.SaveChangesAsync();
                 }
 
-            };
+                return new ApiResult<bool>(ApiCode.Success, "Ok", true);
+            }
+            else
+            {
+            }
+
+            return new ApiResult<bool>(ApiCode.CantFindObject, "can't find this object", false);
         }
 
         [HttpPost("[action]")]
-        public AppMessage Save(FlowRule m)
+        public ApiResult<bool> BindDevice(ModelRuleBind m)
         {
-            if (ModelState.IsValid)
+            var profile = this.GetUserProfile();
+            if (m.dev != null)
+
             {
-                m.RuleStatus = 1;
-                _context.FlowRules.Add(m);
-                _context.SaveChanges();
-
-                return new AppMessage
+                foreach (var d in m.dev.ToList())
                 {
-                    ErrType = ErrType.正常返回,
-                    Result = m
-                };
-
+                    if (!_context.DeviceRules.Any(c => c.FlowRule.RuleId == m.rule && c.Device.Id == d))
+                    {
+                        var dev = _context.Device.SingleOrDefault(c => c.Id == d && c.Tenant.Id == profile.Tenant);
+                        var rule = _context.FlowRules.SingleOrDefault(c =>
+                            c.RuleId == m.rule && c.Tenant.Id == profile.Tenant);
+                        if (dev != null)
+                        {
+                            if (rule != null)
+                            {
+                                var dr = new DeviceRule();
+                                dr.Device = dev;
+                                dr.FlowRule = rule;
+                                dr.ConfigDateTime = DateTime.Now;
+                                dr.ConfigUser = profile.Id;
+                                _context.DeviceRules.Add(dr);
+                            }
+                            else
+                            {
+                                return new ApiResult<bool>(ApiCode.CantFindObject, "can not found that rule:" + m.rule, false);
+                            }
+                        }
+                        else
+                        {
+                            return new ApiResult<bool>(ApiCode.CantFindObject, "can not found that device:" + d, false);
+                        }
+                    }
+                }
+                _context.SaveChanges();
+                return new ApiResult<bool>(ApiCode.Success, "rule binding success", true);
             }
 
-            return new AppMessage
-            {
-                ErrType = ErrType.参数错误,
-                ErrMessage = ModelState.Values.SelectMany(c => c.Errors.FirstOrDefault()?.ErrorMessage).Aggregate("",
-                    (x, y) => x + "," + y)
-            };
-        }
-
-        [HttpPost("[action]")]
-        public AppMessage Update(FlowRule m)
-        {
-            if (ModelState.IsValid)
-            {
-                FlowRule flowrule = new FlowRule();
-                flowrule.Name = m.Name;
-                flowrule.RuleDesc = m.RuleDesc;
-                _context.FlowRules.Update(flowrule);
-                _context.SaveChanges();
-                return new AppMessage
-                {
-                    ErrType = ErrType.正常返回,
-                    Result = m
-                };
-
-            }
-
-
-            return new AppMessage
-            {
-                ErrType = ErrType.参数错误,
-                ErrMessage = ModelState.Values.SelectMany(c => c.Errors.FirstOrDefault()?.ErrorMessage).Aggregate("",
-                    (x, y) => x + "," + y)
-            };
+            return new ApiResult<bool>(ApiCode.CantFindObject, "No device found", false);
         }
 
         [HttpGet("[action]")]
-        public AppMessage Delete(long id)
+        public async Task<ApiResult<bool>> DeleteDeviceRules(Guid deviceId, Guid ruleId)
         {
-            var rule = _context.FlowRules.FirstOrDefault(c => c.RuleId == id);
-            if (rule != null)
+            var profile = this.GetUserProfile();
+            var map = await _context.DeviceRules.Include(c => c.Device)
+                .Include(c => c.FlowRule).FirstOrDefaultAsync(c => c.FlowRule.RuleId == ruleId && c.Device.Id == deviceId && c.Device.Tenant.Id == profile.Tenant && c.FlowRule.Tenant.Id == profile.Tenant);
+            if (map != null)
             {
-                rule.RuleStatus = -1;
-                _context.FlowRules.Update(rule);
+                _context.DeviceRules.Remove(map);
                 _context.SaveChanges();
-                return new AppMessage { ErrType = ErrType.正常返回, };
+                return new ApiResult<bool>(ApiCode.Success, "rule has been removed", true);
             }
-
-            return new AppMessage { ErrType = ErrType.找不到对象, };
+            return new ApiResult<bool>(ApiCode.CantFindObject, "this mapping was not found", true);
         }
 
         [HttpGet("[action]")]
-        public AppMessage<FlowRule> Get(long id)
+        public ApiResult<List<FlowRule>> GetDeviceRules(Guid deviceId)
         {
-            var rule = _context.FlowRules.FirstOrDefault(c => c.RuleId == id);
-            if (rule != null)
-            {
-                return new AppMessage<FlowRule> { ErrType = ErrType.正常返回, Result = rule };
-            }
-
-            return new AppMessage<FlowRule> { ErrType = ErrType.找不到对象, };
+            var profile = this.GetUserProfile();
+            return new ApiResult<List<FlowRule>>(ApiCode.Success, "Ok", _context.DeviceRules.Include(c => c.Device).Where(c => c.Device.Id == deviceId && c.Device.Tenant.Id == profile.Tenant).Select(c => c.FlowRule).Select(c => new FlowRule() { RuleId = c.RuleId, CreatTime = c.CreatTime, Name = c.Name, RuleDesc = c.RuleDesc }).ToList());
         }
 
+        [HttpGet("[action]")]
+        public ApiResult<List<Device>> GetRuleDevices(Guid ruleId)
+        {
+            var profile = this.GetUserProfile();
+            return new ApiResult<List<Device>>(ApiCode.Success, "Ok", _context.DeviceRules.Include(c => c.FlowRule).Where(c => c.FlowRule.RuleId == ruleId && c.FlowRule.Tenant.Id == profile.Tenant).Select(c => c.Device).ToList());
+        }
 
-
+        [HttpGet("[action]")]
+        public ApiResult<List<Flow>> GetFlows(Guid ruleId)
+        {
+            var tid = User.GetTenantId();
+            return new ApiResult<List<Flow>>(ApiCode.Success, "Ok",
+                _context.Flows.Include(c => c.FlowRule)
+                .Where(c => c.FlowRule.RuleId == ruleId && c.FlowStatus > 0 && c.Tenant.Id == tid).ToList());
+        }
 
         [HttpPost("[action]")]
-        public async Task<AppMessage> SaveDiagram(ModelWorkFlow m)
+        public ApiResult<bool> SaveDiagram(ModelWorkFlow m)
         {
-            //    var user = _userManager.GetUserId(User);
-            var profile = await this.GetUserProfile();
-            var activity = JsonConvert.DeserializeObject<IoTSharp.Models.Rule.Activity>(m.Biz);
-
-            var rule = _context.FlowRules.FirstOrDefault(c => c.RuleId == activity.RuleId);
-
+            var profile = this.GetUserProfile();
+            var activity = JsonConvert.DeserializeObject<Activity>(m.Biz);
+            var CreatorId = Guid.NewGuid();
+            var CreateDate = DateTime.Now;
+            var rule = _context.FlowRules.Include(c=>c.Customer).Include(c=>c.Tenant).FirstOrDefault(c => c.RuleId == activity.RuleId);
             rule.DefinitionsXml = m.Xml;
             rule.Creator = profile.Id.ToString();
+            rule.CreateId = CreatorId;
+            _context.Flows.Where(c => c.FlowRule.RuleId == rule.RuleId).ForEach(c =>
+            {
+                c.FlowStatus = -1;
+            });
             _context.FlowRules.Update(rule);
             _context.SaveChanges();
-            _context.Flows.RemoveRange(_context.Flows.Where(c => c.RuleId == activity.RuleId).ToList());
-            _context.SaveChanges();
-
             if (activity.BaseBpmnObjects != null)
             {
-
-                _context.Flows.AddRange(activity.BaseBpmnObjects.Select(c => new Flow
+                var fw = activity.BaseBpmnObjects.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
                     NodeProcessScript = c.BizObject.flowscript,
-                    NodeProcessScriptType = c.BizObject.flowscripttype
-
-                }).ToList());
+                    NodeProcessScriptType = c.BizObject.flowscripttype,
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+      
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
-
             }
 
             if (activity.StartEvents != null)
             {
-                _context.Flows.AddRange(activity.StartEvents.Select(c => new Flow
+                var fw = activity.StartEvents.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+               
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
             }
 
             if (activity.EndEvents != null)
             {
-                _context.Flows.AddRange(activity.EndEvents.Select(c => new Flow
+                var fw = activity.EndEvents.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+           
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
-
             }
 
             if (activity.SequenceFlows != null)
             {
-                _context.Flows.AddRange(activity.SequenceFlows.Select(c => new Flow
+                var fw = activity.SequenceFlows.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
                     SourceId = c.sourceId,
                     TargetId = c.targetId,
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
                     Conditionexpression = c.BizObject.conditionexpression,
-                    NodeProcessParams = c.BizObject.NodeProcessParams
-
-                }).ToList());
+                    NodeProcessParams = c.BizObject.NodeProcessParams,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+         
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
-
             }
 
             if (activity.Tasks != null)
             {
-                _context.Flows.AddRange(activity.Tasks.Select(c => new Flow
+                var fw = activity.Tasks.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
                     NodeProcessParams = c.BizObject.NodeProcessParams,
                     NodeProcessClass = c.BizObject.NodeProcessClass,
                     NodeProcessScript = c.BizObject.flowscript,
-                    NodeProcessScriptType = c.BizObject.flowscripttype
-                }).ToList());
+                    NodeProcessScriptType = c.BizObject.flowscripttype,
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+           
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
             }
 
             if (activity.DataInputAssociations != null)
             {
-                _context.Flows.AddRange(activity.DataInputAssociations.Select(c => new Flow
+                var fw = activity.DataInputAssociations.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+      
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
             }
 
             if (activity.DataOutputAssociations != null)
             {
-                _context.Flows.AddRange(activity.DataOutputAssociations.Select(c => new Flow
+                var fw = activity.DataOutputAssociations.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+            
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
             }
 
             if (activity.TextAnnotations != null)
             {
-                _context.Flows.AddRange(activity.TextAnnotations.Select(c => new Flow
+                var fw = activity.TextAnnotations.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+            
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
             }
 
             if (activity.Containers != null)
             {
-                _context.Flows.AddRange(activity.Containers.Select(c => new Flow
+                var fw = activity.Containers.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+           
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
             }
 
@@ -325,76 +533,92 @@ namespace IoTSharp.Controllers
             {
                 _context.Flows.AddRange(activity.GateWays.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
                 }).ToList());
                 _context.SaveChanges();
             }
 
             if (activity.DataStoreReferences != null)
             {
-                _context.Flows.AddRange(activity.DataStoreReferences.Select(c => new Flow
+                var fw = activity.DataStoreReferences.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+         
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
             }
 
             if (activity.Lane != null)
             {
-                _context.Flows.AddRange(activity.Lane.Select(c => new Flow
+                var fw = activity.Lane.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate,
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+             
+                _context.Flows.AddRange(fw);
                 _context.SaveChanges();
-
             }
 
             if (activity.LaneSet != null)
             {
-                _context.Flows.AddRange(activity.LaneSet.Select(c => new Flow
+                var fws = activity.LaneSet.Select(c => new Flow
                 {
-
-                    RuleId = activity.RuleId,
+                    FlowRule = rule,
                     Flowname = c.BizObject.Flowname,
                     bpmnid = c.id,
                     FlowType = c.bpmntype,
-
-                }).ToList());
+                    FlowStatus = 1,
+                    CreateId = CreatorId,
+                    Createor = profile.Id,
+                    CreateDate = CreateDate  ,    
+                    Customer = rule.Customer,
+                    Tenant = rule.Tenant
+                });
+             
+                _context.Flows.AddRange(fws);
                 _context.SaveChanges();
-
             }
-
-            return new AppMessage
-            { ErrMessage = "操作成功", ErrType = ErrType.正常返回, IsVisble = true, ErrLevel = ErrLevel.Success };
+            return new ApiResult<bool>(ApiCode.Success, "Ok", true);
         }
 
-
-
         [HttpGet("[action]")]
-        public AppMessage GetDiagram(long id)
+        public async Task<ApiResult<Activity>> GetDiagram(Guid id)
         {
-
-            var ruleflow = _context.FlowRules.FirstOrDefault(c => c.RuleId == id);
-            IoTSharp.Models.Rule.Activity activity = new IoTSharp.Models.Rule.Activity();
+            var profile = this.GetUserProfile();
+            var ruleflow = await _context.FlowRules.FirstOrDefaultAsync(c => c.RuleId == id && c.Tenant.Id == profile.Tenant);
+            Activity activity = new Activity();
 
             activity.SequenceFlows ??= new List<SequenceFlow>();
             activity.GateWays ??= new List<GateWay>();
-            activity.Tasks ??= new List<IoTSharp.Models.Rule.Task>();
+            activity.Tasks ??= new List<IoTSharp.Models.Rule.BaseTask>();
             activity.LaneSet ??= new List<BpmnBaseObject>();
             activity.EndEvents ??= new List<BpmnBaseObject>();
             activity.StartEvents ??= new List<BpmnBaseObject>();
@@ -407,12 +631,10 @@ namespace IoTSharp.Controllers
             activity.Lane ??= new List<BpmnBaseObject>();
             activity.TextAnnotations ??= new List<BpmnBaseObject>();
             activity.RuleId = id;
-            var flows = _context.Flows.Where(c => c.RuleId == id).ToList();
-
-
+            var flows = _context.Flows.Where(c => c.FlowRule.RuleId == id && c.FlowStatus > 0 && c.Tenant.Id == profile.Tenant).ToList();
+            activity.Xml = ruleflow.DefinitionsXml?.Trim('\r');
             foreach (var item in flows)
             {
-
                 switch (item.FlowType)
                 {
                     case "bpmn:SequenceFlow":
@@ -428,10 +650,9 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     conditionexpression = item.Conditionexpression
-
                                 }
                             });
                         break;
@@ -448,12 +669,13 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     NodeProcessClass = item.NodeProcessClass,
                                 }
                             });
                         break;
+
                     case "bpmn:StartEvent":
                         activity.StartEvents.Add(
 
@@ -467,12 +689,13 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                 }
                             });
 
                         break;
+
                     case "bpmn:ExclusiveGateway":
                         activity.GateWays.Add(
 
@@ -486,12 +709,13 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:ParallelGateway":
                         activity.GateWays.Add(
 
@@ -505,7 +729,7 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     NodeProcessClass = item.NodeProcessClass
                                 }
@@ -523,15 +747,15 @@ namespace IoTSharp.Controllers
                                 bpmntype = item.FlowType,
                                 BizObject = new FormBpmnObject
                                 {
-
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:EventBasedGateway":
                         activity.GateWays.Add(
 
@@ -545,7 +769,7 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     NodeProcessClass = item.NodeProcessClass
                                 }
@@ -565,19 +789,18 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:Task":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
-
-
                                 id = item.bpmnid,
                                 Flowname = item.Flowname,
                                 bpmntype = item.FlowType,
@@ -585,17 +808,20 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     flowscript = item.NodeProcessScript,
-                                    flowscripttype = item.NodeProcessScriptType
+                                    flowscripttype = item.NodeProcessScriptType,
+                                    NodeProcessClass = item.NodeProcessClass,
+                                    NodeProcessParams = item.NodeProcessParams
                                 }
                             });
                         break;
+
                     case "bpmn:BusinessRuleTask":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
@@ -604,19 +830,20 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     flowscript = item.NodeProcessScript,
-                                    flowscripttype = item.NodeProcessScriptType
+                                    flowscripttype = item.NodeProcessScriptType,
+                                    NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:ReceiveTask":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
@@ -624,18 +851,18 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
-
+                                    NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:UserTask":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
@@ -643,10 +870,11 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     flowscript = item.NodeProcessScript,
-                                    flowscripttype = item.NodeProcessScriptType
+                                    flowscripttype = item.NodeProcessScriptType,
+                                    NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
@@ -654,9 +882,8 @@ namespace IoTSharp.Controllers
                     case "bpmn:ServiceTask":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
@@ -664,19 +891,20 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     flowscript = item.NodeProcessScript,
-                                    flowscripttype = item.NodeProcessScriptType
+                                    flowscripttype = item.NodeProcessScriptType,
+                                    NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:ManualTask":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
@@ -684,19 +912,20 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     flowscript = item.NodeProcessScript,
-                                    flowscripttype = item.NodeProcessScriptType
+                                    flowscripttype = item.NodeProcessScriptType,
+                                    NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:SendTask":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
@@ -704,19 +933,20 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                     flowscript = item.NodeProcessScript,
-                                    flowscripttype = item.NodeProcessScriptType
+                                    flowscripttype = item.NodeProcessScriptType,
+                                    NodeProcessClass = item.NodeProcessClass
                                 }
                             });
                         break;
+
                     case "bpmn:CallActivity":
                         activity.Tasks.Add(
 
-                            new IoTSharp.Models.Rule.Task
+                            new IoTSharp.Models.Rule.BaseTask
                             {
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
@@ -724,11 +954,12 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                 }
                             });
                         break;
+
                     case "bpmn:IntermediateCatchEvent":
                         activity.EndEvents.Add(
 
@@ -741,11 +972,12 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                 }
                             });
                         break;
+
                     case "bpmn:IntermediateThrowEvent":
                         activity.EndEvents.Add(
 
@@ -758,7 +990,7 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                 }
                             });
@@ -776,51 +1008,48 @@ namespace IoTSharp.Controllers
                                 {
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                 }
                             });
                         break;
+
                     case "bpmn:Participant":
                         activity.Containers.Add(
 
                             new BpmnBaseObject
                             {
-
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
                                 BizObject = new FormBpmnObject
                                 {
-
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                 }
                             });
                         break;
+
                     case "bpmn:DataStoreReference":
                         activity.DataStoreReferences.Add(
 
                             new BpmnBaseObject
                             {
-
-
                                 Flowname = item.Flowname,
                                 id = item.bpmnid,
                                 bpmntype = item.FlowType,
                                 BizObject = new FormBpmnObject
                                 {
-
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
                                 }
                             });
                         break;
+
                     case "bpmn:SubProcess":
                         activity.SubProcesses.Add(
 
@@ -831,17 +1060,13 @@ namespace IoTSharp.Controllers
                                 bpmntype = item.FlowType,
                                 BizObject = new FormBpmnObject
                                 {
-
                                     Flowid = item.FlowId.ToString(),
                                     Flowdesc = item.Flowdesc,
-                                    Flowtype = item.FlowType.ToString(),
+                                    Flowtype = item.FlowType,
                                     Flowname = item.Flowname,
-
-
                                 }
                             });
                         break;
-
 
                     default:
                         BpmnBaseObject node = new BpmnBaseObject
@@ -850,7 +1075,7 @@ namespace IoTSharp.Controllers
                             {
                                 Flowid = item.FlowId.ToString(),
                                 Flowdesc = item.Flowdesc,
-                                Flowtype = item.FlowType.ToString(),
+                                Flowtype = item.FlowType,
                                 Flowname = item.Flowname,
                             },
                             bpmntype = item.FlowType,
@@ -865,429 +1090,256 @@ namespace IoTSharp.Controllers
                         activity.BaseBpmnObjects.Add(node);
                         break;
                 }
-
             }
-
-            return new AppMessage
-            {
-                Result = new
-                {
-                    Xml = ruleflow.DefinitionsXml?.Trim('\r'),
-                    Biz = activity
-                }
-            };
+            return new ApiResult<IoTSharp.Models.Rule.Activity>(ApiCode.Success, "rule has been removed", activity);
         }
-
-        private async System.Threading.Tasks.Task Process(Flow flow, List<Flow> allflow, object data, int nextstep, long _eventid)
-        {
-
-            
-       
-
-            switch (flow.FlowType)
-            {
-                case "bpmn:SequenceFlow":
-                    var t = allflow.FirstOrDefault(c => c.bpmnid == flow.TargetId);
-                    _context.FlowOperations.Add(new FlowOperation()
-                    {
-                        AddDate = DateTime.Now,
-                        RuleId = flow.RuleId,
-                        FlowId = flow.FlowId,
-                        Data = JsonConvert.SerializeObject(data),
-                        NodeStatus = 1,
-                        OperationDesc = "执行条件（" + (string.IsNullOrEmpty(flow.Conditionexpression)?"空条件": flow.Conditionexpression)+")",
-                        Step = nextstep,
-                        bpmnid = flow.bpmnid,
-                        EventId = _eventid
-                    });
-                    await _context.SaveChangesAsync();
-                    await Process(t, allflow, data, ++nextstep, _eventid);
-                    break;
-                case "bpmn:Task":
-                    {
-                        //脚本处理
-                        if (!string.IsNullOrEmpty(flow.NodeProcessScriptType)&&!string.IsNullOrEmpty(flow.NodeProcessScript))
-                        {
-                            switch (flow.NodeProcessScriptType)
-                            {
-                                case "csharp":
-                                    var scripts = flow.NodeProcessScript;
-
-                                    //脚本处理逻辑
-                                    break;
-                                case "javascript":
-                                    {
-                                      
-                                    }
-                                    //脚本处理逻辑
-                                    break;
-                                case "python":
-                                    break;
-                                case "xml":
-                                    break;
-                                case "json":
-                                    break;
-                                case "bat":
-                                    break;
-                                case "sql":
-                                    break;
-                            }
-                        }
-           
-                        var taskoperation = new FlowOperation()
-                        {
-                            bpmnid = flow.bpmnid,
-                            AddDate = DateTime.Now,
-                            RuleId = flow.RuleId,
-                            FlowId = flow.FlowId,
-                            Data = JsonConvert.SerializeObject(data),
-                            NodeStatus = 1,
-                            OperationDesc = "执行任务" + flow.Flowname,
-                            Step = nextstep,
-                            EventId = _eventid
-                        };
-                        _context.FlowOperations.Add(taskoperation);
-                        await _context.SaveChangesAsync();
-                        //如果是异步调用，可以在此终止，然后通过FlowOperation表中当前的taskoperation.OperationId找到当前挂起的FlowId 再次恢复处理
-
-                        //条件处理
-                        var flows = allflow.Where(c => c.SourceId == flow.bpmnid).ToList();
-                        var tasks = new BaseRuleTask()
-                        {
-                            Name = flow.Flowname,
-                            Eventid = flow.bpmnid,
-                            id = flow.bpmnid,
-
-                            outgoing = new EditableList<BaseRuleFlow>()
-                        };
-                    
-                        nextstep++;
-
-                        var emptyflow = flows.Where(c => c.Conditionexpression == string.Empty).ToList();
-
-                        foreach (var item in flows.Except(emptyflow))
-                        {
-                            var rule = new BaseRuleFlow();
-                            rule.Expression = item.Conditionexpression;
-                            rule.id = item.bpmnid;
-                            rule.Name = item.Flowname;
-                            rule.Eventid = item.bpmnid;
-                            tasks.outgoing.Add(rule);
-                        }
-
-
-                        if (tasks.outgoing.Count > 0)
-                        {
-                            SimpleFLowExcutor flowExcutor = new SimpleFLowExcutor();
-                            var result = await flowExcutor.Excute(new FlowExcuteEntity()
-                            {
-                            //    Action = null,
-                                Params = data,
-                                Task = tasks,
-                             //   WaitTime = 0
-
-                            });
-                            var next = result.Where(c => c.IsSuccess).ToList();
-                            foreach (var item in next)
-                            {
-
-                                var nextflow = allflow.FirstOrDefault(a => a.bpmnid == item.Rule.SuccessEvent);
-                                emptyflow.Add(nextflow);
-                            }
-                        }
-                       
-
-                        foreach (var item in emptyflow)
-                        {
-                            await Process(item, allflow, data, nextstep, _eventid);
-                        }
-                    }
-
-                    break;
-                case "bpmn:EndEvent":
-                    // 合并结束
-                  var end=  _context.FlowOperations.FirstOrDefault(c => c.bpmnid == flow.bpmnid&&c.EventId==_eventid)??new FlowOperation();
-
-
-                    end.bpmnid = flow.bpmnid;
-                    end.AddDate = DateTime.Now;
-                    end.RuleId = flow.RuleId;
-                    end.FlowId = flow.FlowId;
-                    end.Data = JsonConvert.SerializeObject(data);
-                    end.NodeStatus = 1;
-                    end.OperationDesc = "处理完成";
-                    end.Step = _context.FlowOperations.Where(c =>  c.EventId == _eventid).Max(c=>c.Step)+1;
-                    end.EventId = _eventid;
-
-                    if (end.OperationId > 0)
-                    {
-                        _context.FlowOperations.Update(end);
-                    }
-                    else
-                    {
-                        _context.FlowOperations.Add(end);
-                    }
-                    await _context.SaveChangesAsync();
-
-                    break;
-                case "bpmn:StartEvent":
-
-                    {
-                        var flows = allflow.Where(c => c.SourceId == flow.bpmnid).ToList();
-                        var tasks = new BaseRuleTask()
-                        {
-                            Name = flow.Flowname,
-                            Eventid = flow.bpmnid,
-                            id = flow.bpmnid,
-
-                            outgoing = new EditableList<BaseRuleFlow>()
-                        };
-                        _context.FlowOperations.Add(new FlowOperation()
-                        {
-                            bpmnid = flow.bpmnid,
-                            AddDate = DateTime.Now,
-                            RuleId = flow.RuleId,
-                            FlowId = flow.FlowId,
-                            Data = JsonConvert.SerializeObject(data),
-                            NodeStatus = 1,
-                            OperationDesc = "开始处理",
-                            Step = nextstep,
-                            EventId = _eventid
-                        });
-                        await _context.SaveChangesAsync(); 
-                        var emptyflow = flows.Where(c => c.Conditionexpression == string.Empty).ToList();
-
-                        foreach (var item in flows.Except(emptyflow))
-                        {
-                            var rule = new BaseRuleFlow();
-
-                            rule.id = item.bpmnid;
-                            rule.Name = item.bpmnid;
-                            rule.Eventid = item.bpmnid;
-                            rule.Expression = item.Conditionexpression;
-                            tasks.outgoing.Add(rule);
-                        }
-
-                        if (tasks.outgoing.Count > 0)
-                        {
-                            SimpleFLowExcutor flowExcutor = new SimpleFLowExcutor();
-                            var result = await flowExcutor.Excute(new FlowExcuteEntity()
-                            {
-                              //  Action = null,
-                                Params = data,  //也可以放自定义数据
-                                Task = tasks,
-                             //   WaitTime = 0
-
-                            });
-
-                            var next = result.Where(c => c.IsSuccess).ToList();
-
-
-                    
-                            foreach (var item in next)
-                            {
-
-                                var nextflow = allflow.FirstOrDefault(a => a.bpmnid == item.Rule.SuccessEvent);
-                                emptyflow.Add(nextflow);
-
-                            }
-
-                          
-                        }
-                        nextstep++;
-                        foreach (var item in emptyflow)
-                        {
-                            await Process(item, allflow, data, nextstep, _eventid);
-                        }
-                    }
-                    break;
-                case "label":
-
-                    break;
-                case "bpmn:Lane":
-
-                    break;
-
-                case "bpmn:Participant":
-
-                    break;
-
-                case "bpmn:DataStoreReference":
-
-                    break;
-
-                case "bpmn:SubProcess":
-
-                    break;
-                default:
-                    {
-                        var flows = allflow.Where(c => c.SourceId == flow.bpmnid).ToList();
-                        var tasks = new BaseRuleTask()
-                        {
-                            Name = flow.Flowname,
-                            Eventid = flow.bpmnid,
-                            id = flow.bpmnid,
-
-                            outgoing = new EditableList<BaseRuleFlow>()
-                        };
-                        _context.FlowOperations.Add(new FlowOperation()
-                        {
-                            bpmnid = flow.bpmnid,
-                            AddDate = DateTime.Now,
-                            RuleId = flow.RuleId,
-                            FlowId = flow.FlowId,
-                            Data = JsonConvert.SerializeObject(data),
-                            NodeStatus = 1,
-                            OperationDesc = "执行任务" + flow.Flowname,
-                            Step = nextstep,
-                            EventId = _eventid
-                        });
-                        await _context.SaveChangesAsync();
-                        nextstep++;
-                        var emptyflow = flows.Where(c => c.Conditionexpression == string.Empty).ToList();
-                        foreach (var item in flows.Except(emptyflow))
-                        {
-                            var rule = new BaseRuleFlow();
-                            rule.Expression = item.Conditionexpression;
-                            rule.id = item.bpmnid;
-                            rule.Name = item.Flowname;
-                            rule.Eventid = item.bpmnid;
-                            tasks.outgoing.Add(rule);
-                        }
-
-
-                        if (tasks.outgoing.Count > 0)
-                        {
-                            SimpleFLowExcutor flowExcutor = new SimpleFLowExcutor();
-                            var result = await flowExcutor.Excute(new FlowExcuteEntity()
-                            {
-                                //  Action = null,
-                                Params = data,
-                                Task = tasks,
-                             //   WaitTime = 0
-
-                            });
-                            var next = result.Where(c => c.IsSuccess).ToList();
-                            foreach (var item in next)
-                            {
-
-                                var nextflow = allflow.FirstOrDefault(a => a.bpmnid == item.Rule.SuccessEvent);
-                                emptyflow.Add(nextflow);
-
-
-                            }
-                        }
-
-                        foreach (var item in emptyflow)
-                        {
-                            await Process(item, allflow, data, nextstep, _eventid);
-                        }
-
-                        break;
-                    }
-
-
-
-            }
-
-        }
-
-
 
         [HttpPost("[action]")]
-        public async Task<AppMessage> Active([FromBody] JObject form)
+        public async Task<ApiResult<dynamic>> Active([FromBody] JObject form)
         {
-
-            var profile = await this.GetUserProfile();
+            var profile = this.GetUserProfile();
             var formdata = form.First.First;
             var extradata = form.First.Next;
             var obj = extradata.First.First.First.Value<JToken>();
-            var obj1 = extradata.First.First.Next.First.Value<JToken>();
-            var formid = obj.Value<int>();
-            var ruleid = obj1.Value<int>();
-            //wrong way
-            //   var _form = _context.DynamicFormInfos.FirstOrDefault(c => c.FormId == formid);
-            //   object data = formdata.ToObject(BuildPocoObject(_form.ModelClass, "FormData"+ _form.FormId));
-            //  var _params = _context.DynamicFormFieldInfos.Where(c => c.FormId == formid).ToList();
-            var d = formdata.ToObject(typeof(ExpandoObject));
+            var __ruleid = obj.Value<string>();
+            var ruleid = Guid.Parse(__ruleid);
 
-            var _event = new BaseEvent()
+            var d = formdata.Value<JToken>().ToObject(typeof(ExpandoObject));
+            var testabizId = Guid.NewGuid().ToString(); //根据业务保存起来，用来查询执行事件和步骤
+            var result = await _flowRuleProcessor.RunFlowRules(ruleid, d, Guid.Empty, EventType.TestPurpose, testabizId);
+
+
+        
+            var flowRule=_context.FlowRules.SingleOrDefault(c => c.RuleId == ruleid);
+
+            var flows = _context.Flows.Where(c => c.FlowRule == flowRule).ToList();
+
+
+            if (result.Count > 0)
             {
-                CreaterDateTime = DateTime.Now,
-                Creator = profile.Id,
-                EventDesc = "测试",
-                EventName = "测试",
-                MataData = JsonConvert.SerializeObject(d),
-                RuleId = ruleid,
-                Bizid = formid.ToString(),
-                Type = EventType.TestPurpose,
-                EventStaus = 1
-            };
-            _context.BaseEvents.Add(_event);
-            _context.SaveChanges();
-            // 非测试环境事件产生完，此时应当返回事件，剩余处理下一步进行异步处理。
+                await Task.Run(() =>
+                {
 
+                    var operevent =
+                        _context.BaseEvents.SingleOrDefault(
+                            c => c.EventId == result.FirstOrDefault().BaseEvent.EventId);
 
-
-
-            var flows = _context.Flows.Where(c => c.RuleId == ruleid && c.FlowType != "label").ToList();
-            var start = flows.FirstOrDefault(c => c.FlowType == "bpmn:StartEvent");
-            //    var end = flows.FirstOrDefault(c => c.FlowType == "bpmn:EndEvent");
-            await Process(start, flows, d, 1, _event.EventId);
-
-
-
-            //应该由事件总线去通知
-            return new AppMessage
-            {
-                ErrType = ErrType.正常返回,
-                Result = _context.FlowOperations.OrderBy(c => c.Step).
-                Where(c => c.EventId == _event.EventId).ToList()
+                    var list = result.Select(c => new FlowOperation
+                    {
+                        AddDate = c.AddDate,
+                        BizId = c.BizId,
+                        Data = c.Data, BaseEvent = operevent,
+                        Flow = flows.SingleOrDefault(x=>x.FlowId==c.Flow.FlowId
+                        ),
+                        FlowRule = flowRule,
+                        NodeStatus = c.NodeStatus,
+                        OperationDesc = c.OperationDesc,
+                        OperationId = new Guid(),
+                        Step = c.Step,
+                        Tag = c.Tag,
+                        bpmnid = c.bpmnid
+                    }).ToArray();
+                    _context.FlowOperations.AddRange(list);
+                    _context.SaveChanges();
+                });
+            }
+            return new ApiResult<dynamic>(ApiCode.Success, "test complete", result.OrderBy(c => c.Step).
+                Where(c => c.BaseEvent.Bizid == testabizId).ToList()
                 .GroupBy(c => c.Step).Select(c => new
                 {
                     Step = c.Key,
                     Nodes = c
-                }).ToList()
-            };
+                }).ToList());
         }
 
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="m"></param>
+        /// <returns></returns>
 
-     
-
-        private Type BuildPocoObject(string classtext, string typename)
+        [HttpPost("[action]")]
+        public async Task<ApiResult<PagedData<BaseEventDto>>> FlowEvents([FromBody] EventParam m)
         {
-            MetadataReference[] references = {
-
-
-            };
-
-
-            var tree = SyntaxFactory.ParseSyntaxTree(classtext);
-            CSharpCompilation compilation = CSharpCompilation.Create(typename, new[] { tree }, references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-            using var ms = new MemoryStream();
-            EmitResult result = compilation.Emit(ms);
-            if (!result.Success)
+            var profile = this.GetUserProfile();
+            Expression<Func<BaseEvent, bool>> condition = x => x.EventStaus > -1 && x.Tenant.Id == profile.Tenant;
+            if (!string.IsNullOrEmpty(m.Name))
             {
-                IEnumerable<Diagnostic> failures = result.Diagnostics.Where(diagnostic =>
-                    diagnostic.IsWarningAsError ||
-                    diagnostic.Severity == DiagnosticSeverity.Error);
-                foreach (Diagnostic diagnostic in failures)
-                {
+                condition = condition.And(x => x.EventName.Contains(m.Name));
+            }
 
-                }
-                return null;
+            if (m.CreatTime != null && m.CreatTime.Length == 2)
+            {
+                condition = condition.And(x => x.CreaterDateTime > m.CreatTime[0] && x.CreaterDateTime < m.CreatTime[1]);
+            }
+
+            if (m.RuleId != null)
+            {
+                condition = condition.And(x => x.FlowRule.RuleId == m.RuleId);
+            }
+
+            if (m.Creator != null && m.Creator != Guid.Empty)
+            {
+                condition = condition.And(x => x.Creator == m.Creator.Value);
+            }
+
+            var result = _context.BaseEvents.OrderByDescending(c => c.CreaterDateTime).Where(condition)
+                .Skip((m.offset) * m.limit).Take(m.limit).Select(c => new BaseEventDto
+                {
+                    Name = c.FlowRule.Name,
+                    Bizid = c.Bizid,
+                    CreaterDateTime = c.CreaterDateTime,
+                    Creator = c.Creator,
+                    EventDesc = c.EventDesc,
+                    EventId = c.EventId,
+                    EventStaus = c.EventStaus,
+                    EventName = c.EventName,
+                    MataData = c.MataData,
+                    RuleId = c.FlowRule.RuleId,
+                    Type = c.Type
+                }).ToList();
+
+            foreach (var item in result)
+            {
+                item.CreatorName = await GetCreatorName(item);
+            }
+            return new ApiResult<PagedData<BaseEventDto>>(ApiCode.Success, "OK", new PagedData<BaseEventDto>
+            {
+                total = _context.BaseEvents.Count(condition),
+                rows = result
+            });
+        }
+
+        private async Task<string> GetCreatorName(BaseEventDto dto)
+        {
+            if (dto.Type == EventType.Normal)
+            {
+                return _context.Device.SingleOrDefault(c => c.Id == dto.Creator)?.Name;
             }
             else
             {
-                ms.Seek(0, SeekOrigin.Begin);
-                return Assembly.Load(ms.ToArray()).DefinedTypes.FirstOrDefault();
+                return (await _userManager.FindByIdAsync(dto.Creator.ToString()))?.UserName;
             }
-
         }
 
+        [HttpGet("[action]")]
+        public ApiResult<dynamic> GetFlowOperations(Guid eventId)
+        {
+            var profile = this.GetUserProfile();
+            return new ApiResult<dynamic>(ApiCode.Success, "OK", _context.FlowOperations.Where(c => c.BaseEvent.EventId == eventId).ToList().OrderBy(c => c.Step).
+              ToList()
+                .GroupBy(c => c.Step).Select(c => new
+                {
+                    Step = c.Key,
+                    Nodes = c
+                }).ToList());
+        }
+
+        [HttpGet("[action]")]
+        public ApiResult<dynamic> GetExecutors()
+        {
+            return new ApiResult<dynamic>(ApiCode.Success, "OK", _helper.GetTaskExecutorList().Select(c => new { label = c.Key, value = c.Value.FullName }).ToList());
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<PagedData<RuleTaskExecutor>>> Executors(ExecutorParam m)
+        {
+            var profile = this.GetUserProfile();
+            var rte = from x in _context.RuleTaskExecutors where x.ExecutorStatus > -1 && x.Tenant.Id == profile.Tenant orderby x.AddDateTime descending select x;
+            var pd = new PagedData<RuleTaskExecutor>
+            {
+                total = await rte.CountAsync(),
+                rows = await rte.Skip((m.offset) * m.limit).Take(m.limit).ToListAsync()
+            };
+            return new ApiResult<PagedData<RuleTaskExecutor>>(ApiCode.Success, "OK", pd);
+        }
+
+        [HttpGet("[action]")]
+        public async Task<ApiResult<RuleTaskExecutor>> GetExecutor(Guid Id)
+        {
+            var profile = this.GetUserProfile();
+            var executor = await _context.RuleTaskExecutors.SingleOrDefaultAsync(c => c.ExecutorId == Id && c.Tenant.Id == profile.Tenant);
+
+            if (executor != null)
+            {
+                return new ApiResult<RuleTaskExecutor>(ApiCode.Success, "Ok", executor);
+            }
+            return new ApiResult<RuleTaskExecutor>(ApiCode.CantFindObject, "cant't find that object", null);
+        }
+
+        [HttpGet("[action]")]
+        public async Task<ApiResult<bool>> DeleteExecutor(Guid Id)
+        {
+            var profile = this.GetUserProfile();
+            var executor = await _context.RuleTaskExecutors.SingleOrDefaultAsync(c => c.ExecutorId == Id && c.Tenant.Id == profile.Tenant);
+
+            if (executor != null)
+            {
+                executor.ExecutorStatus = -1;
+                _context.RuleTaskExecutors.Update(executor);
+                await _context.SaveChangesAsync();
+                return new ApiResult<bool>(ApiCode.Success, "Ok", true);
+            }
+            return new ApiResult<bool>(ApiCode.CantFindObject, "cant't find that object", false);
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<bool>> UpdateExecutor(RuleTaskExecutor m)
+        {
+            var profile = this.GetUserProfile();
+            var executor = await _context.RuleTaskExecutors.SingleOrDefaultAsync(c => c.ExecutorId == m.ExecutorId && c.Tenant.Id == profile.Tenant);
+            if (executor != null)
+            {
+                executor.DefaultConfig = m.DefaultConfig;
+                executor.ExecutorDesc = m.ExecutorDesc;
+                executor.ExecutorName = m.ExecutorName;
+                executor.TypeName = m.ExecutorName;
+                executor.Path = m.Path;
+                executor.Tag = m.Tag;
+                _context.RuleTaskExecutors.Update(executor);
+                await _context.SaveChangesAsync();
+                return new ApiResult<bool>(ApiCode.Success, "Ok", true);
+            }
+            return new ApiResult<bool>(ApiCode.CantFindObject, "cant't find that object", false);
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<bool>> AddExecutor(RuleTaskExecutor m)
+        {
+            var profile = this.GetUserProfile();
+            var executor = new RuleTaskExecutor();
+            executor.DefaultConfig = m.DefaultConfig;
+            executor.ExecutorDesc = m.ExecutorDesc;
+            executor.ExecutorName = m.ExecutorName;
+            executor.TypeName = m.ExecutorName;
+            executor.Path = m.Path;
+            executor.Tag = m.Tag;
+            executor.AddDateTime = DateTime.Now;
+            executor.Creator = User.GetUserId();
+            executor.ExecutorStatus = 1;
+            _context.JustFill(this, executor);
+            _context.RuleTaskExecutors.Add(executor);
+            var rest = await _context.SaveChangesAsync();
+            return new ApiResult<bool>(ApiCode.Success, "Ok", rest > 0);
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ApiResult<RuleTaskExecutorTestResultDto>> TestTask(RuleTaskExecutorTestDto m)
+        {
+            var profile = this.GetUserProfile();
+            var result = await this._flowRuleProcessor.TestScript(m.ruleId, m.flowId, m.Data);
+            await _context.SaveChangesAsync();
+            return new ApiResult<RuleTaskExecutorTestResultDto>(ApiCode.Success, "Ok", new RuleTaskExecutorTestResultDto() { Data = result.Data });
+        }
+
+        [HttpPost("RuleCondition")]
+        public async Task<ApiResult<ConditionTestResult>> RuleCondition([FromBody] RuleTaskFlowTestResultDto m)
+        {
+            var profile = this.GetUserProfile();
+            var data = JsonConvert.DeserializeObject(m.Data) as JObject;
+            var d = data.ToObject(typeof(ExpandoObject));
+            var result = await this._flowRuleProcessor.TestCondition(m.ruleId, m.flowId, d);
+            return new ApiResult<ConditionTestResult>(ApiCode.Success, "Ok", result);
+        }
     }
-
-
-
-
 }

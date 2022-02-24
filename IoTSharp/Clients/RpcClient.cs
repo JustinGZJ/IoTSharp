@@ -1,7 +1,6 @@
-﻿using MQTTnet;
+﻿using Microsoft.Extensions.Logging;
+using MQTTnet;
 using MQTTnet.Client;
-using MQTTnet.Client.Options;
-using MQTTnet.Client.Receiving;
 using MQTTnet.Exceptions;
 using MQTTnet.Protocol;
 using System;
@@ -20,18 +19,21 @@ namespace IoTSharp.Extensions
     public class  RpcClient : IDisposable
     {
         private readonly ConcurrentDictionary<string, TaskCompletionSource<byte[]>> _waitingCalls = new ConcurrentDictionary<string, TaskCompletionSource<byte[]>>();
-        private readonly IMqttClient _mqttClient;
-        private IMqttClientOptions _mqtt;
+        private readonly MqttClient _mqttClient;
+        private readonly ILogger _logger;
+        private MqttClientOptions _mqtt;
         private bool disposedValue;
 
-        public RpcClient(IMqttClient mqttClient)
+        public RpcClient(MqttClient mqttClient,  ILogger logger)
         {
             _mqttClient = mqttClient ?? throw new ArgumentNullException(nameof(mqttClient));
-
-            _mqttClient.ApplicationMessageReceivedHandler    = new MqttApplicationMessageReceivedHandlerDelegate(args => OnApplicationMessageReceived(mqttClient, args)  );
+            _logger = logger;
+            _mqttClient.ApplicationMessageReceivedAsync += OnApplicationMessageReceived;
         }
 
-        public RpcClient(IMqttClientOptions mqtt):this (new MQTTnet.MqttFactory().CreateMqttClient())
+      
+
+        public RpcClient(MqttClientOptions mqtt, Microsoft.Extensions.Logging.ILogger _logger) :this (new MQTTnet.MqttFactory().CreateMqttClient(), _logger)
         {
             _mqtt = mqtt;
           
@@ -119,19 +121,16 @@ namespace IoTSharp.Extensions
             }
         }
 
-        private void OnApplicationMessageReceived(object sender, MqttApplicationMessageReceivedEventArgs eventArgs)
+        private Task OnApplicationMessageReceived(MqttApplicationMessageReceivedEventArgs eventArgs)
         {
-            if (!_waitingCalls.TryRemove(eventArgs.ApplicationMessage.Topic, out var tcs))
+            if (_waitingCalls.TryRemove(eventArgs.ApplicationMessage.Topic, out var tcs))
             {
-                return;
+                if (!tcs.Task.IsCompleted && !tcs.Task.IsCanceled)
+                {
+                    tcs.TrySetResult(eventArgs.ApplicationMessage.Payload);
+                }
             }
-
-            if (tcs.Task.IsCompleted || tcs.Task.IsCanceled)
-            {
-                return;
-            }
-
-            tcs.TrySetResult(eventArgs.ApplicationMessage.Payload);
+            return Task.CompletedTask;
         }
 
        

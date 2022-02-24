@@ -1,13 +1,10 @@
-import { ChangeDetectorRef, Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { STChange, STColumn, STComponent, STData, STPage, STReq, STRes } from '@delon/abc/st';
-import { ModalHelper, SettingsService, _HttpClient } from '@delon/theme';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { STColumn, STComponent, STData, STPage, STReq, STRes } from '@delon/abc/st';
+import { SettingsService, _HttpClient } from '@delon/theme';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { map, tap } from 'rxjs/operators';
-import { Validators, FormBuilder, FormGroup } from '@angular/forms/forms';
-import { NzDrawerRef, NzDrawerService } from 'ng-zorro-antd/drawer';
+import { NzDrawerService } from 'ng-zorro-antd/drawer';
 
-import { ACLService } from '@delon/acl';
 
 import { UserformComponent } from '../userform/userform.component';
 
@@ -18,7 +15,7 @@ import { UserformComponent } from '../userform/userform.component';
 })
 export class UserlistComponent implements OnInit {
   customerId: string = '';
-  url = '/api/Account/All';
+  url = 'api/Account/All/'+this.customerId;
   page: STPage = {
     front: false,
     total: true,
@@ -38,13 +35,13 @@ export class UserlistComponent implements OnInit {
     name: '',
     customerId: '',
   };
-  req: STReq = { method: 'GET', allInBody: true, reName: { pi: 'offset', ps: 'limit' }, params: this.q };
+  req: STReq = { method: 'Get', allInBody: true, reName: { pi: 'offset', ps: 'limit' }, params: this.q };
 
   // 定义返回的参数
   res: STRes = {
     reName: {
-      total: 'total',
-      list: 'rows',
+      total: 'data',
+      list: 'data',
     },
   };
 
@@ -82,29 +79,34 @@ export class UserlistComponent implements OnInit {
   constructor(
     private http: _HttpClient,
     public msg: NzMessageService,
-    private modal: ModalHelper,
-    private cdr: ChangeDetectorRef,
-    private _router: Router,
-
     private router: ActivatedRoute,
     private drawerService: NzDrawerService,
     private settingService: SettingsService,
-    aclSrv: ACLService,
   ) {}
 
   ngOnInit(): void {
     this.router.queryParams.subscribe(
       (x) => {
-        this.q.customerId = x.id as unknown as string;
-        this.customerId = x.id as unknown as string;
 
-        if (x.id) {
-          this.url = 'api/Account/All/' + this.customerId;
-        } else {
-          this.url = 'api/Account/All';
+
+        if( !x.id){
+          this.q.customerId= this.settingService.user.comstomer
+          this.customerId = this.settingService.user.comstomer;
+        }else{
+          this.q.customerId = x.id as unknown as string;
+          this.customerId = x.id as unknown as string;
         }
+        this.url = 'api/Account/All/'+this.customerId;
+        // this.q.customerId = x.id as unknown as string;
+        // this.customerId = x.id as unknown as string;
+
+        // if (x.id) {
+        //   this.url = 'api/Account/All/' + this.customerId;
+        // } else {
+        //   this.url = 'api/Account/All';
+        // }
       },
-      (y) => {},
+      () => {},
       () => {},
     );
   }
@@ -122,7 +124,7 @@ export class UserlistComponent implements OnInit {
       },
     });
     drawerRef.afterOpen.subscribe(() => {});
-    drawerRef.afterClose.subscribe((data) => {
+    drawerRef.afterClose.subscribe(() => {
       this.getData();
     });
   }
@@ -130,11 +132,11 @@ export class UserlistComponent implements OnInit {
   reset() {}
   delete(id: string) {
     this.http.delete('/api/Tenants/' + id, {}).subscribe(
-      (x) => {
+      () => {
         this.msg.info('租户已删除');
         this.getData();
       },
-      (y) => {},
+      () => {},
       () => {},
     );
   }

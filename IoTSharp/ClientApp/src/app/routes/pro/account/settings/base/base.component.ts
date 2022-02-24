@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { _HttpClient } from '@delon/theme';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { zip } from 'rxjs';
@@ -33,42 +34,63 @@ interface ProAccountSettingsCity {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProAccountSettingsBaseComponent implements OnInit {
-  constructor(private http: _HttpClient, private cdr: ChangeDetectorRef, private msg: NzMessageService) {}
+
+  form: FormGroup;
+  constructor(private http: _HttpClient,
+     private cdr: ChangeDetectorRef,
+      private msg: NzMessageService,
+      private fb: FormBuilder,) {
+
+    this.form = fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      name: ['', [Validators.required, Validators.email]],
+      phonenumber: ['', [Validators.required, Validators.pattern(/^1\d{10}$/)]],
+    });
+
+  }
   avatar = '';
-  userLoading = true;
-  user!: ProAccountSettingsUser;
+  userLoading = false;
+  user!:any;
 
   // #region geo
+
 
   provinces: ProAccountSettingsCity[] = [];
   cities: ProAccountSettingsCity[] = [];
 
+
+
+
   ngOnInit(): void {
-    zip(this.http.get('/user/current'), this.http.get('/geo/province')).subscribe(
-      ([user, province]: [ProAccountSettingsUser, ProAccountSettingsCity[]]) => {
-        this.userLoading = false;
-        this.user = user;
-        this.provinces = province;
-        this.choProvince(user.geographic.province.key, false);
-        this.cdr.detectChanges();
-      },
-    );
+   
+    
+    this.http.get('api/Account/MyInfo').subscribe(next=>{
+      this.userLoading=false;
+  
+this.form.patchValue(next.data)
+    },error=>{},()=>{});
   }
 
-  choProvince(pid: string, cleanCity: boolean = true): void {
-    this.http.get(`/geo/${pid}`).subscribe((res) => {
-      this.cities = res;
-      if (cleanCity) {
-        this.user.geographic.city.key = '';
-      }
-      this.cdr.detectChanges();
-    });
-  }
+ 
 
   // #endregion
 
-  save(): boolean {
-    this.msg.success(JSON.stringify(this.user));
-    return false;
+  save(): void {
+
+    Object.keys(this.form.controls).forEach((key) => {
+      this.form.controls[key].markAsDirty();
+      this.form.controls[key].updateValueAndValidity();
+    });
+    const data = this.form.value;
+
+    if (this.form.invalid) {
+      return;
+    }
+    this.http.put('api/Account/ModifyMyInfo', data).subscribe((x) => {
+      if(x.code===10000){
+
+
+      }
+    })
   }
 }
