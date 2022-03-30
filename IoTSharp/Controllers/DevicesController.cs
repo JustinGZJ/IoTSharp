@@ -32,6 +32,7 @@ using System.Linq.Expressions;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using System.Xml;
+using MongoDB.Bson.IO;
 using Dic = System.Collections.Generic.Dictionary<string, string>;
 using DicKV = System.Collections.Generic.KeyValuePair<string, string>;
 
@@ -48,8 +49,15 @@ namespace IoTSharp.Controllers
         private const string _map_to_telemety_ = "_map_to_telemetry_";
         private const string _map_to_attribute_ = "_map_to_attribute_";
         private const string _map_to_devname = "_map_to_devname";
+        private const string _map_to_jsontext_in_json = "_map_to_jsontext_in_json";
+        private const string _map_to_data_in_array = "_map_to_data_in_array";
+        private const string _map_to_subdevname = "_map_to_subdevname";
         private const string _map_var_devname = "$devname";
+        private const string _map_var_subdevname = "$subdevname";
         private const string _map_to_devname_format = "_map_to_devname_format";
+        private const string _map_to_ = "_map_to_";
+        private const string _map_var_ts_format = "_map_var_ts_format";
+        private const string _map_var_ts_field = "_map_var_ts_field";
         private readonly ApplicationDbContext _context;
         private readonly MqttClientOptions _mqtt;
         private readonly UserManager<IdentityUser> _userManager;
@@ -62,6 +70,7 @@ namespace IoTSharp.Controllers
         private readonly FlowRuleProcessor _flowRuleProcessor;
         private readonly IEasyCachingProvider _caching;
         private readonly IServiceScopeFactory _scopeFactor;
+   
 
         public DevicesController(UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager, ILogger<DevicesController> logger, MqttServer serverEx, ApplicationDbContext context, MqttClientOptions mqtt, IStorage storage, IOptions<AppSettings> options, ICapPublisher queue
@@ -80,6 +89,7 @@ namespace IoTSharp.Controllers
             _flowRuleProcessor = flowRuleProcessor;
             _caching = factory.GetCachingProvider("iotsharp");
             _scopeFactor = scopeFactor;
+           
         }
 
         /// <summary>
@@ -472,7 +482,7 @@ namespace IoTSharp.Controllers
         /// <param name="begin">开始以时间， 比如 2019-06-06 12:24</param>
         /// <returns></returns>
         [Authorize(Roles = nameof(UserRole.NormalUser))]
-        [HttpGet("{deviceId}/TelemetryLatest/{keyName}/{begin}")]
+        [HttpGet("{deviceId}/TelemetryLatest/{keys}/{begin}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResult), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
@@ -486,9 +496,7 @@ namespace IoTSharp.Controllers
             else
             {
                 return new ApiResult<List<TelemetryDataDto>>(ApiCode.Success, "Ok",
-                    keys == "all"
-                        ? await _storage.LoadTelemetryAsync(deviceId, begin)
-                        : await _storage.LoadTelemetryAsync(deviceId, keys, begin));
+                    await _storage.LoadTelemetryAsync(deviceId, keys == "all" ? string.Empty : keys, begin, DateTime.Now, TimeSpan.Zero, Aggregate.None));
             }
         }
 
@@ -501,7 +509,7 @@ namespace IoTSharp.Controllers
         /// <param name="end">For example: 2019-06-06 12:24</param>
         /// <returns></returns>
         [Authorize(Roles = nameof(UserRole.NormalUser))]
-        [HttpGet("{deviceId}/TelemetryData/{keyName}/{begin}/{end}")]
+        [HttpGet("{deviceId}/TelemetryData/{keys}/{begin}/{end}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResult), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
@@ -515,10 +523,40 @@ namespace IoTSharp.Controllers
             else
             {
                 return new ApiResult<List<TelemetryDataDto>>(ApiCode.Success, "Ok",
-                    keys == "all" ? await _storage.LoadTelemetryAsync(deviceId, begin, end) : await _storage.LoadTelemetryAsync(deviceId, keys, begin, end));
+                  await _storage.LoadTelemetryAsync(deviceId, keys == "all" ? string.Empty:keys,  begin, end,  TimeSpan.Zero, Aggregate.None) );
             }
         }
-
+        /// <summary>
+        /// 返回指定设备的的遥测数据， 按照keyname 和指定时间范围获取，如果keyname 为 all  , 则返回全部key 的数据
+        /// </summary>
+        /// <param name="deviceId">指定设备ID</param>
+        /// <param name="queryDto">查询条件例子:
+        ///{
+        /// "keys": "",
+        /// "begin": "2022-03-23T11:44:56.488Z",
+        /// "every": "1.03:14:56:166",
+        /// "aggregate": "Mean"
+        /// }
+        /// </param>
+        /// <returns></returns>
+        [Authorize(Roles = nameof(UserRole.NormalUser))]
+        [HttpPost("{deviceId}/TelemetryData")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResult), StatusCodes.Status404NotFound)]
+        [ProducesDefaultResponseType]
+        public async Task<ApiResult<List<TelemetryDataDto>>> GetTelemetryData(Guid deviceId,TelemetryDataQueryDto queryDto)
+        {
+            Device dev = Found(deviceId);
+            if (dev == null)
+            {
+                return new ApiResult<List<TelemetryDataDto>>(ApiCode.NotFoundDeviceIdentity, "Device's Identity not found", null);
+            }
+            else
+            {
+                return new ApiResult<List<TelemetryDataDto>>(ApiCode.Success, "Ok",
+                         await _storage.LoadTelemetryAsync(deviceId, queryDto.keys, queryDto.begin, queryDto.end, queryDto.every, queryDto.aggregate));
+            }
+        }
         /// <summary>
         /// 获取设备详情
         /// </summary>
@@ -844,21 +882,25 @@ namespace IoTSharp.Controllers
         /// 上传原始Json或者xml 通过规则链进行解析。 
         /// </summary>
         /// <param name="access_token">Device 's access token </param>
-        /// <param name="body"></param>
         /// <param name="format"></param>
         /// <returns></returns>
+        /// <remarks>需要在body里面填充数据</remarks>
         [AllowAnonymous]
-        [HttpPost("{access_token}/PushDataToMap/{fromat}")]
+        [HttpPost("{access_token}/PushDataToMap/{format}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResult<Dic>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResult), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
-        public async Task<ActionResult<ApiResult>> PushDataToMap(string access_token, [FromBody] string body, string format = "json")
+        public async Task<ActionResult<ApiResult>> PushDataToMap(string access_token,[FromRoute] string format="json")
         {
-
+            var body = string.Empty;
+            using (StreamReader reader = new StreamReader(Request.Body))
+            {
+                body= await reader.ReadToEndAsync();
+            }
             var (ok, _dev) = _context.GetDeviceByToken(access_token);
             if (ok)
             {
-                return NotFound(new ApiResult<Dic>(ApiCode.NotFoundDevice, $"{access_token} not a gateway's access token", new Dic(new DicKV[] { new DicKV("access_token", access_token) })));
+                return NotFound(new ApiResult(ApiCode.NotFoundDevice, $"{access_token} not a gateway's access token"));
             }
             else
             {
@@ -869,60 +911,45 @@ namespace IoTSharp.Controllers
                     doc.LoadXml(body);
                     json = Newtonsoft.Json.JsonConvert.SerializeXmlNode(doc);
                 }
-                var atts = await _caching.GetAsync($"_map_{_dev.Id}", async () =>
+                var atts_cach = await _caching.GetAsync($"_map_{_dev.Id}", async () =>
                 {
-                    var guids =  from al in _context.AttributeLatest where al.DeviceId == _dev.Id  &&  (al.KeyName== _map_to_devname ||  al.KeyName.StartsWith(_map_to_attribute_) || al.KeyName.StartsWith(_map_to_telemety_)) select al;
+                    var guids =  from al in _context.AttributeLatest where al.DeviceId == _dev.Id  &&    al.KeyName.StartsWith(_map_to_)  select al;
                     return await guids.ToArrayAsync();
                 }
              , TimeSpan.FromSeconds(_setting.RuleCachingExpiration));
-                if (atts.HasValue)
+                if (atts_cach.HasValue)
                 {
                     try
                     {
-                        var jt = JToken.Parse(json);
-                        var devnamekey = atts.Value.FirstOrDefault(g => g.KeyName == _map_to_devname);
-                        if (devnamekey != null)
+                        var jroot = JToken.Parse(json);
+                        JToken jt = null;
+                        var atts = atts_cach.Value;
+                        var pathx = atts.FirstOrDefault(al => al.KeyName == _map_to_jsontext_in_json)?.Value_String;
+                        if (pathx != null)
                         {
-                            var devnameformatkey = atts.Value.FirstOrDefault(g => g.KeyName == _map_to_devname_format)?.Value_String;
-                            var devname = (jt.SelectToken(devnamekey.Value_String) as JValue).ToObject<string>() ;
-                            if (devname != null && !string.IsNullOrEmpty(devname))
+                            jt = JToken.Parse(jroot.SelectToken(pathx).ToObject<string>());
+                        }
+                        else
+                        {
+                            jt = jroot;
+                        }
+                        var data_in_array = atts.FirstOrDefault(al => al.KeyName == _map_to_data_in_array)?.Value_String;
+                        var ts_format = atts.FirstOrDefault(g => g.KeyName ==_map_var_ts_format)?.Value_String ?? string.Empty;
+                        var ts_field = atts.FirstOrDefault(g => g.KeyName == _map_var_ts_field)?.Value_String ?? string.Empty;
+                        if (!string.IsNullOrEmpty(data_in_array))
+                        {
+                            var subdevname = atts.FirstOrDefault(al => al.KeyName == _map_to_subdevname)?.Value_String;
+                            var jary = jt.SelectToken(data_in_array) as JArray;
+                            jary.Children().ForEach(jo =>
                             {
-                                var _devname = (devnameformatkey ?? _map_var_devname).Replace(_map_var_devname, devname);
-                                if (!string.IsNullOrEmpty(_devname))
-                                {
-                                    var device = _dev.JudgeOrCreateNewDevice(devname, _scopeFactor, _logger);
-
-                                    var pairs_att = new Dictionary<string, object>();
-                                    var pairs_tel = new Dictionary<string, object>();
-                                    atts.Value?.ToList().ForEach(g =>
-                                    {
-                                        var value =( jt.SelectToken(g.Value_String) as JValue)?.JValueToObject();
-                                        if (value != null && g.KeyName?.Length>0)
-                                        {
-                                            if (g.KeyName.StartsWith(_map_to_attribute_) && g.KeyName.Length> _map_to_attribute_.Length)
-                                            {
-                                                pairs_att.Add(g.KeyName.Substring(_map_to_attribute_.Length), value);
-                                            }
-                                            else if (g.KeyName.StartsWith(_map_to_telemety_) && g.KeyName.Length > _map_to_telemety_.Length )
-                                            {
-                                                pairs_tel.Add(g.KeyName.Substring(_map_to_telemety_.Length), value);
-                                            }
-                                        }
-                                    });
-                                    if (pairs_tel.Any())
-                                    {
-                                        _queue.PublishTelemetryData(new RawMsg() { DeviceId = device.Id, MsgBody = pairs_tel, DataSide = DataSide.ClientSide, DataCatalog = DataCatalog.TelemetryData });
-                                    }
-                                    if (pairs_att.Any())
-                                    {
-                                        _queue.PublishAttributeData(new RawMsg() { DeviceId = device.Id, MsgBody = pairs_tel, DataSide = DataSide.ClientSide, DataCatalog = DataCatalog.AttributeData });
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                _logger.LogInformation($"数据");
-                            }
+                                string _devname = buid_dev_name(atts, jt,jo);
+                                push_one_device_data_with_json(jo,jt, _dev, _devname, atts, ts_field, ts_format);
+                            });
+                        }
+                        else
+                        {
+                            string _devname = buid_dev_name(atts, jt,null);
+                            push_one_device_data_with_json(jt,jroot, _dev, _devname, atts, ts_field, ts_format);
                         }
                         return Ok(new ApiResult(ApiCode.Success, "OK"));
                     }
@@ -939,25 +966,119 @@ namespace IoTSharp.Controllers
             }
         }
 
+        private string buid_dev_name(AttributeLatest[] atts, JToken jt, JToken jc)
+        {
+            string _result = string.Empty;
+            var devnamekey = atts.FirstOrDefault(g => g.KeyName == _map_to_devname);
+            var subdevnamekey = atts.FirstOrDefault(g => g.KeyName == _map_to_subdevname);
+            if (devnamekey != null)
+            {
+                var devnameformatkey = atts.FirstOrDefault(g => g.KeyName == _map_to_devname_format)?.Value_String ?? _map_var_devname;
+                var devname = (jt.SelectToken(devnamekey.Value_String) as JValue)?.ToObject<string>();
+                var subdevname = (subdevnamekey!=null &&  (jc!=null))?(jc.SelectToken(subdevnamekey.Value_String) as JValue)?.ToObject<string>():string.Empty;
+                if (!string.IsNullOrEmpty(devnameformatkey))
+                {
+                    _result = devnameformatkey;
+                    if (!string.IsNullOrEmpty(devname)) _result = _result.Replace(_map_var_devname, devname);
+                    if (!string.IsNullOrEmpty( subdevname)) _result = _result.Replace(_map_var_subdevname, subdevname);
+                }
+                else
+                {
+                    _result = $"{devname}{subdevname}";
+                }
+            }
+            return _result;
+        }
+
+        private void push_one_device_data_with_json(JToken jt, JToken jroot, Device _dev,string _devname, AttributeLatest[] atts, string ts_field,string ts_format)
+        {
+            var device = _dev.JudgeOrCreateNewDevice(_devname, _scopeFactor, _logger);
+            var pairs_att = new Dictionary<string, object>();
+            var pairs_tel = new Dictionary<string, object>();
+            DateTime ts = DateTime.Now;
+          
+            atts?.ToList().ForEach(g =>
+            {
+                JValue jv = null;
+                if (g.Value_String.StartsWith("@"))//如果是@开头， 则从父节点取
+                {
+                    jv = jroot.SelectToken(g.Value_String.Substring(1)) as JValue;
+                }
+                else
+                {
+                    jv = jt.SelectToken(g.Value_String) as JValue;
+                }
+                var value = (jv)?.JValueToObject();
+                if (value != null && g.KeyName?.Length > 0)
+                {
+                    if (!string.IsNullOrEmpty(ts_field) )
+                    {
+                        if (g.KeyName == $"{_map_to_attribute_}{ts_field}" || g.KeyName == $"{_map_to_telemety_}{ts_field}")
+                        {
+                            if (!string.IsNullOrEmpty(ts_format))
+                            {
+                                if (!DateTime.TryParseExact(value as string, ts_format, null, System.Globalization.DateTimeStyles.None, out ts))
+                                {
+                                    ts = DateTime.Now;
+                                }
+                            }
+                            else
+                            {
+                                if (!DateTime.TryParse(value as string, out ts))
+                                {
+                                    ts = DateTime.Now;
+                                }
+                            }
+                        }
+                    }
+                    if (g.KeyName.StartsWith(_map_to_attribute_) && g.KeyName.Length > _map_to_attribute_.Length)
+                    {
+                        pairs_att.Add(g.KeyName.Substring(_map_to_attribute_.Length), value);
+                    }
+                    else if (g.KeyName.StartsWith(_map_to_telemety_) && g.KeyName.Length > _map_to_telemety_.Length)
+                    {
+                        pairs_tel.Add(g.KeyName.Substring(_map_to_telemety_.Length), value);
+                    }
+                }
+            });
+         
+            if (pairs_tel.Any())
+            {
+                _queue.PublishTelemetryData(new RawMsg() {  ts =ts, DeviceId = device.Id, MsgBody = pairs_tel, DataSide = DataSide.ClientSide, DataCatalog = DataCatalog.TelemetryData });
+            }
+            if (pairs_att.Any())
+            {
+                _queue.PublishAttributeData(new RawMsg() { ts = ts, DeviceId = device.Id, MsgBody = pairs_att, DataSide = DataSide.ClientSide, DataCatalog = DataCatalog.AttributeData });
+            }
+            _queue.PublishDeviceStatus(device.Id,  DeviceStatus.Good);
+            _queue.PublishDeviceStatus(_dev.Id, DeviceStatus.Good);
+
+
+        }
+
         /// <summary>
         /// 上传原始Json或者xml 通过规则链进行解析。 
         /// </summary>
         /// <param name="access_token">Device 's access token </param>
-        /// <param name="body">原始数据， Post 在Body里面。 </param>
         /// <param name="format">只支持json和 xml， XML会转换为 Json。</param>
         /// <returns></returns>
+        /// <remarks>需要在body里面填充数据</remarks>
         [AllowAnonymous]
         [HttpPost("{access_token}/PushDataToRuleChains/{fromat}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResult<Dic>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResult), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
-        public async Task<ActionResult<ApiResult>> PushDataToRuleChains(string access_token, [FromBody]string body,string format="json")
+        public async Task<ActionResult<ApiResult>> PushDataToRuleChains(string access_token, string format="json")
         {
-        
+            var body = string.Empty;
+            using (StreamReader reader = new StreamReader(Request.Body))
+            {
+                body = await reader.ReadToEndAsync();
+            }
             var (ok, _dev) = _context.GetDeviceByToken(access_token);
             if (ok)
             {
-                return NotFound(new ApiResult<Dic>(ApiCode.NotFoundDevice, $"{access_token} not a gateway's access token", new Dic(new DicKV[] { new DicKV("access_token", access_token) })));
+                return NotFound(new ApiResult(ApiCode.NotFoundDevice, $"{access_token} not a gateway's access token"));
             }
             else
             {
@@ -981,7 +1102,8 @@ namespace IoTSharp.Controllers
                         rules.Value.ToList().ForEach(async g =>
                         {
                             _logger.LogInformation($"{_dev.Id}的数据通过规则链{g}进行处理。");
-                            var result = await _flowRuleProcessor.RunFlowRules(g, body, _dev.Id, EventType.Normal, null);
+                       
+                            var result = await _flowRuleProcessor.RunFlowRules(g, Newtonsoft.Json.JsonConvert.DeserializeObject(body), _dev.Id, EventType.Normal, null);
 
                         });
                         return Ok(new ApiResult(ApiCode.Success, "OK"));

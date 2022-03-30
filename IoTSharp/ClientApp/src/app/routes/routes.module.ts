@@ -75,14 +75,14 @@ import { DevivceshapeComponent } from './device/devicegraph/panels/devivceshape/
 import { GatewayshapeComponent } from './device/devicegraph/panels/gatewayshape/gatewayshape.component';
 import { PortshapeComponent } from './device/devicegraph/panels/portshape/portshape.component';
 import { toolpaneldirective } from './device/devicegraph/panels/toolpaneldirective';
+import { NgxEchartsModule } from 'ngx-echarts';
 
 const COMPONENTS: Array<Type<null>> = [];
-const Directive: Type<void>[] = [
-  fielddirective, 
-  controldirective,
-  toolpaneldirective];
+const Directive: Type<void>[] = [fielddirective, controldirective, toolpaneldirective];
 @NgModule({
-  imports: [SharedModule, RouteRoutingModule, G2BarModule, G2GaugeModule, NzIconModule, WidgetsModule, ClipboardModule],
+  imports: [SharedModule, RouteRoutingModule, G2BarModule, G2GaugeModule, NzIconModule, WidgetsModule, ClipboardModule, NgxEchartsModule.forRoot({
+    echarts: () => import('echarts'),
+  }),],
   declarations: [
     ...COMPONENTS,
 

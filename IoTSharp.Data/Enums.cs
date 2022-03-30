@@ -138,8 +138,6 @@ namespace IoTSharp.Data
         TestPurpose=2
     }
 
-
-
     public enum NodeStatus
     {
         Abort = -1,
@@ -157,15 +155,76 @@ namespace IoTSharp.Data
     }
     public enum MountType
     {
+        /// <summary>
+        /// 原始数据
+        /// </summary>
         RAW = 0,
+        /// <summary>
+        /// 遥测数据对象
+        /// </summary>
         Telemetry =1,
+        /// <summary>
+        /// 属性数据对象  
+        /// </summary>
         Attribute=2,
+        /// <summary>
+        /// 远程控制
+        /// </summary>
         RPC=3,
+        /// <summary>
+        /// 在线
+        /// </summary>
         Online = 4,
-        Offline=5
+        /// <summary>
+        /// 离线
+        /// </summary>
+        Offline = 5,
+        /// <summary>
+        /// 遥测数据， key value type datetime 
+        /// </summary>
+        TelemetryArray = 6,
+    }
+    /// <summary>
+    /// 折叠数据
+    /// </summary>
+    [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum Aggregate
+    {
+        /// <summary>
+        /// 不使用
+        /// </summary>
+        None,
+        /// <summary>
+        /// 平均数
+        /// </summary>
+        Mean,
+        /// <summary>
+        /// 中值
+        /// </summary>
+        Median,
+        /// <summary>
+        /// 最后一个值
+        /// </summary>
+        Last,
+        /// <summary>
+        /// 第一个值
+        /// </summary>
+        First,
+        /// <summary>
+        /// 最大
+        /// </summary>
+        Max,
+        /// <summary>
+        /// 最小
+        /// </summary>
+        Min,
+        /// <summary>
+        /// 合计
+        /// </summary>
+        Sum
     }
 
-    
 
 
 }
